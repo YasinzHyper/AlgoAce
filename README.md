@@ -21,12 +21,7 @@ AlgoAce/
 
 ### Backend Setup
 
-1. Navigate to the API directory:
-```bash
-cd api
-```
-
-2. Follow the setup instructions in [api/README.md](api/README.md)
+Follow the setup instructions in [api/README.md](api/README.md)
 
 ### Frontend Setup
 
