@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
-from .agents.crew import DSACrew
-from .config import validate_env
+from agents.crew import DSACrew
+from config import validate_env
 
 # Validate environment variables on startup
 validate_env()

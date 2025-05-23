@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OpenAIEmbeddings
 from crewai import Agent, Task, Crew
-from ..config import OPENAI_API_KEY, validate_env
+from config import OPENAI_API_KEY, validate_env
 
 # Validate environment variables
 validate_env()
