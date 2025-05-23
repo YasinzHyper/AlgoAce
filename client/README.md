@@ -1,24 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AlgoAce Client
 
-## Getting Started
+This is the frontend application for AlgoAce, built with Next.js, TypeScript, and shadcn-ui.
 
-First, run the development server:
+## Prerequisites
 
+- Node.js 18 or higher
+- npm or yarn
+
+## Setup
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Set up shadcn-ui:
+```bash
+npx shadcn-ui@latest init
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+When prompted, use these settings:
+- Would you like to use TypeScript (recommended)? Yes
+- Which style would you like to use? Default
+- Which color would you like to use as base color? Slate
+- Where is your global CSS file? src/app/globals.css
+- Do you want to use CSS variables for colors? Yes
+- Where is your tailwind.config.js located? tailwind.config.js
+- Configure the import alias for components? @/components
+- Configure the import alias for utils? @/lib/utils
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Run the development server:
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`
+
+## Project Structure
+
+```
+client/
+├── src/
+│   ├── app/              # Next.js app directory
+│   ├── components/       # React components
+│   │   └── ui/          # shadcn-ui components
+│   └── lib/             # Utility functions
+├── public/              # Static assets
+└── components.json      # shadcn-ui configuration
+```
+
+## Development
+
+- The frontend uses Next.js 14 with App Router
+- Styling is done with Tailwind CSS
+- UI components are from shadcn-ui
+- TypeScript for type safety
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
 ## Learn More
 
