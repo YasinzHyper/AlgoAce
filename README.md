@@ -21,7 +21,7 @@ AlgoAce/
 
 ### Backend Setup
 
-1. Navigate to the API directory:
+1. Navigate to the backend directory:
 ```bash
 cd api
 ```
@@ -74,8 +74,7 @@ The frontend will be available at `http://localhost:3000`
 ### Backend
 - FastAPI
 - CrewAI
-- LangChain
-- ChromaDB
+- Supabase
 - OpenAI
 
 ### Frontend
