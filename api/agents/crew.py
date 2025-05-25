@@ -21,8 +21,8 @@ class DSACrew:
     
     def create_learning_path(self, user_input: dict):
         task = Task(
-            description=f"Generate a roadmap for user with goals: {user_input['goals']}, deadline: {user_input['deadline']}, weekly time: {user_input['weekly_time']}, knowledge: {user_input['knowledge']}",
-            expected_output="A JSON object with weekly DSA topics (with difficulty) and non-DSA items.",
+            description=f"Generate a roadmap for user with goal: {user_input['goal']}, number of weeks: {user_input['weeks']}, available weekly time: {user_input['weekly_time']} hours, current knowledge: {user_input['knowledge']}",
+            expected_output="A JSON array with weekly DSA topics (with difficulty - Basic, Intermediate, Advanced) and non-DSA items (if applicable) with level (Basic, Intermediate, Advanced). Example: [{'week': 1, 'DSA': {'Arrays': 'Intermediate', 'Graphs': 'Advanced'}, 'Other': {'Computer Networks': 'Advanced'}}]",
             agent=self.roadmap_agent
         )
         return self.crew.kickoff({"user_input": user_input})

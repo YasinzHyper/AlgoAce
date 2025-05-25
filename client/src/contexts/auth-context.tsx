@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = async () => {
     try {
       const { data: { session: currentSession } } = await supabase.auth.getSession()
-      console.log("Refreshing session:", currentSession)
+      // console.log("Refreshing session:", currentSession)
       setSession(currentSession)
       setUser(currentSession?.user ?? null)
     } catch (error) {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh
   }
 
-  console.log("Auth context value:", value)
+  // console.log("Auth context value:", value)
 
   return (
     <AuthContext.Provider value={value}>

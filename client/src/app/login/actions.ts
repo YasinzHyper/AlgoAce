@@ -10,21 +10,29 @@ export async function login(formData: FormData) {
 
   // type-casting here for convenience
   // in practice, you should validate your inputs
-  const data = {
+  const userInput = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword(userInput)
 
-  if (error) {
-    redirect('/error')
+    if (error) {
+      redirect('/error')
+      // return error;
+    }
+
+    // Revalidate all paths to ensure auth state is updated everywhere
+    revalidatePath('/', 'layout')
+    revalidatePath('/login', 'layout')
+    redirect('/')
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('An unexpected error occurred during login') 
   }
-
-  // Revalidate all paths to ensure auth state is updated everywhere
-  revalidatePath('/', 'layout')
-  revalidatePath('/login', 'layout')
-  redirect('/')
 }
 
 export async function signup(formData: FormData) {
