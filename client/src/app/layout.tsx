@@ -29,23 +29,23 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <SidebarProvider>
-              <AppSidebar />
-              <SidebarInset>
-                <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-16">
-                  <SidebarTrigger className="cursor-pointer" />
-                  <div className="flex-1" />
-                </header>
-                <main className="flex-1 p-4 md:p-6">{children}</main>
-              </SidebarInset>
-            </SidebarProvider>
-          </ThemeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-16">
+                <SidebarTrigger className="cursor-pointer" />
+                <div className="flex-1" />
+              </header>
+              <main className="flex-1 p-4 md:p-6">{children}</main>
+            </SidebarInset>
+          </SidebarProvider>
+        </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

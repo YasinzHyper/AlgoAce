@@ -7,7 +7,7 @@ class RoadmapAgent(DSAAgent):
             name="Roadmap Expert",
             role="DSA Learning Path Specialist",
             goal="Create personalized DSA learning roadmaps based on user goals, time constraints, and knowledge level.",
-            backstory="Expert in structuring DSA learning journeys with a focus on user-specific constraints.",
+            backstory="Expert in structuring interview preparation and DSA learning journeys with a focus on user-specific constraints.",
             tools=[RoadmapTool()]
         )
 
