@@ -1,10 +1,11 @@
 ---
-description:
-globs:
-alwaysApply: true
+description: General project rules important for all tasks
+globs: 
+alwaysApply: false
 ---
-
-# Your rule content
-
-- You can @ files here
-- You can use markdown but dont have to
+### General Rules:
+- Make sure to use Next.js for the frontend
+- Use ShadCN + tailwindCSS for the UI wherever applicable
+- Keep in mind that FastAPI is being used for the backend
+- Make sure to remember that Supabase is the DB that is going to be used for Auth + vector DB + DB
+- Make sure to use the standard folder structure for Next.js
