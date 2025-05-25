@@ -2,15 +2,87 @@ from crewai.tools import BaseTool
 from crewai_tools import CSVSearchTool
 from supabase import create_client
 import json
+from google import genai  # Import Google's generative AI library
+from google.genai import types
+from config import GEMINI_API_KEY
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
+def parse_json(roadmap:str):
+    try:
+    # Extract JSON from potential code block
+        if '```json' in roadmap:
+            start = roadmap.find('```json') + len('```json')
+            end = roadmap.find('```', start)
+            if end == -1:
+                end = len(roadmap)
+            json_str = roadmap[start:end].strip()
+        else:
+            json_str = roadmap.strip()
+        # Debug output
+        print(f"Gemini response (cleaned): {json_str}")
+        # Validate the JSON
+        json.loads(json_str)
+        return json_str
+    except json.JSONDecodeError as e:
+        error_message = json.dumps({"error": f"Invalid JSON: {str(e)}"})
+        print(error_message)
+        return error_message
+    except Exception as e:
+        error_message = json.dumps({"error": f"Failed to process roadmap: {str(e)}"})
+        print(error_message)
+        return error_message
 
 class RoadmapTool(BaseTool):
     name: str = "Roadmap Tool"
-    description: str = "Generates a DSA roadmap based on user input."
+    description: str = "Generates a personalized DSA roadmap using Gemini API."
 
     def _run(self, user_input: dict) -> str:
-        # Logic to generate roadmap JSON
-        # This could involve AI generation or a predefined algorithm
-        return json.dumps({"roadmap": "generated roadmap"})
+        json_example = """
+        [
+            {
+                "week": 1,
+                "DSA": {"Arrays": "Intermediate", "Linked Lists": "Basic"},
+                "Other": {"Operating Systems": "Advanced"}
+            },
+            {
+                "week": 2,
+                "DSA": {"Graphs": "Advanced"},
+                "Other": {"Computer Networks": "Intermediate"}
+            }
+        ]
+        """
+        prompt = f"""
+        Generate a personalized learning roadmap for a user with the following details:
+
+        - Goal: {user_input['goal']}
+        - Number of weeks: {user_input['weeks']}
+        - Weekly time available: {user_input['weekly_time']} hours
+        - Current knowledge: {json.dumps(user_input['knowledge'])}
+
+        The roadmap should be a JSON array where each element represents a week's plan. Each week's plan should include DSA topics with their difficulty levels (Basic, Intermediate, Advanced) and, if applicable, non-DSA items with their levels. For example:
+
+        {json_example}
+
+        Ensure the response is a valid JSON array in this exact format without any extra markdown formatting (return it in plaintext format).
+        """
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash-001",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="You are a helpful assistant that generates personalized learning roadmaps in valid JSON format.",
+                    temperature=0.7,
+                )
+            )
+            roadmap = response.text.strip()
+            print(f"Gemini response: {roadmap}")  # Debug output
+            roadmap_json = parse_json(roadmap)
+            return roadmap_json
+        except Exception as e:
+            error_msg = json.dumps([{"error": f"Failed to generate roadmap: {str(e)}"}])
+            print(f"Generated error response: {error_msg}")  # Debug output
+            return error_msg
 
 class ProblemRecommendationTool(BaseTool):
     name: str = "Problem Recommendation Tool"

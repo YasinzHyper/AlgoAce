@@ -64,7 +64,7 @@ export function AppSidebar() {
   const { user, loading, refresh } = useAuth()
 
   useEffect(() => {
-    console.log("Sidebar auth state:", { user, loading })
+    // console.log("Sidebar auth state:", { user, loading })
   }, [user, loading])
 
   const handleLogout = async () => {
@@ -131,41 +131,41 @@ export function AppSidebar() {
               </SidebarMenuButton>
             ) : user ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="cursor-pointer" asChild>
-                  <SidebarMenuButton size="lg" className="cursor-pointer">
-                    <Avatar className="h-6 w-6">
+              <DropdownMenuTrigger className="cursor-pointer" asChild>
+                <SidebarMenuButton size="lg" className="cursor-pointer">
+                  <Avatar className="h-6 w-6">
                       <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
                       <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                  </Avatar>
                     <div className="flex flex-col items-start">
                       <span className="text-sm font-medium">{user.email}</span>
                       <span className="text-xs text-muted-foreground">Signed in</span>
                     </div>
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/profile" className="flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>View Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer">
-                    <Link href="/settings" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/profile" className="flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>View Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/settings" className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     className="flex items-center text-destructive focus:text-destructive cursor-pointer"
                     onClick={handleLogout}
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             ) : (
               <SidebarMenuButton size="lg" asChild>
                 <Link href="/login" className="flex items-center">

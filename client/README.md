@@ -29,7 +29,13 @@ When prompted, use these settings:
 - Configure the import alias for components? @/components
 - Configure the import alias for utils? @/lib/utils
 
-3. Run the development server:
+3. create a `.env.local` file with the following values:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=<supabase_url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase_key>
+```
+
+4. Run the development server:
 ```bash
 npm run dev
 ```
