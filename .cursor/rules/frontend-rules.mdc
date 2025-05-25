@@ -1,0 +1,133 @@
+---
+description: Rules to be followed for all tasks in the client folder for the frontend
+globs: 
+alwaysApply: false
+---
+### 1. Authentication & Authorization Rules
+
+1. **Auth State Management**
+   - Always use the `useAuth` hook from `@/contexts/auth-context` to access auth state
+   - Never directly access Supabase auth methods in components
+   - Always handle loading states when using auth data
+   - Always refresh auth state after login/logout operations
+
+2. **Protected Routes**
+   - All routes except `/login`, `/signup`, and `/auth/callback` must be protected
+   - Use middleware for route protection instead of component-level checks
+   - Always redirect authenticated users away from auth pages
+   - Always redirect unauthenticated users to login page
+
+3. **Auth Actions**
+   - All auth actions must be server actions (use 'use server' directive)
+   - Always revalidate paths after auth state changes
+   - Always handle errors and redirect appropriately
+   - Always use the server-side Supabase client for auth operations
+
+### 2. Component Structure Rules
+
+1. **Client/Server Components**
+   - Mark client components with "use client" directive
+   - Keep server components as the default
+   - Split complex components into client and server parts when needed
+   - Use server actions for data mutations
+
+2. **Component Organization**
+   - Place reusable components in `@/components`
+   - Place page-specific components in the page directory
+   - Use consistent naming: `ComponentName.tsx` for components
+   - Group related components in subdirectories
+
+3. **State Management**
+   - Use React Context for global state
+   - Use local state for component-specific state
+   - Avoid prop drilling beyond 2 levels
+   - Use server components for data fetching when possible
+
+### 3. API & Data Fetching Rules
+
+1. **Supabase Client Usage**
+   - Use `@/utils/supabase/server` for server-side operations
+   - Use `@/utils/supabase/client` for client-side operations
+   - Never expose Supabase credentials in client code
+   - Always handle errors from Supabase operations
+
+2. **Data Fetching**
+   - Use server components for initial data loading
+   - Use client components for real-time updates
+   - Implement proper loading states
+   - Handle errors gracefully with user feedback
+
+### 4. UI/UX Rules
+
+1. **Layout Structure**
+   - Remember that the sidebar layout present in `src/app/layout.tsx` is consistent across all the pages
+   - Maintain consistent spacing using the design system
+   - Use responsive design patterns
+   - Follow the established navigation structure
+
+2. **Component Styling**
+   - Utilize ShadCN components wherever possible.
+   - Use Tailwind CSS classes consistently
+
+3. **Loading States**
+   - Show loading skeletons for async operations
+   - Use consistent loading indicators
+   - Handle empty states appropriately
+   - Show error states with clear messages
+
+### 5. Error Handling Rules
+
+1. **Error Management**
+   - Always catch and handle errors in async operations
+   - Provide user-friendly error messages
+   - Log errors appropriately
+   - Implement proper error boundaries
+
+2. **Form Validation**
+   - Validate inputs on both client and server side
+   - Show clear validation messages
+   - Handle form submission errors gracefully
+   - Implement proper loading states during submission
+
+### 6. Performance Rules
+
+1. **Code Optimization**
+   - Use proper code splitting
+   - Implement proper caching strategies
+   - Optimize images and assets
+   - Use proper loading strategies
+
+2. **State Updates**
+   - Minimize unnecessary re-renders
+   - Use proper memoization techniques
+   - Implement proper cleanup in useEffect
+   - Use proper state management patterns
+
+### 7. Security Rules
+
+1. **Authentication Security**
+   - Never expose sensitive data in client code
+   - Implement proper session management
+   - Use secure password requirements
+   - Implement proper CSRF protection
+
+2. **Data Security**
+   - Validate all user inputs
+   - Sanitize data before display
+   - Implement proper access control
+   - Use proper encryption for sensitive data
+
+### 8. Testing Rules
+
+1. **Test Coverage**
+   - Write tests for critical paths
+   - Test error scenarios
+   - Test authentication flows
+   - Test responsive design
+
+2. **Test Organization**
+   - Organize tests by feature
+   - Use consistent test naming
+   - Implement proper test setup and teardown
+
+   - Use proper mocking strategies
