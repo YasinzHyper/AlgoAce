@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Lightbulb, ListChecks, LineChart } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Home() {
   const testimonials = [
@@ -24,22 +25,54 @@ export default function Home() {
   ];
 
   const [current, setCurrent] = useState(0);
+  const [showCoach, setShowCoach] = useState(false);
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'bot', content: "Hey there! I'm AlgoBuddy 🤖. Need help with anything?" },
+  ]);
+  const [userInput, setUserInput] = useState('');
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % testimonials.length);
-    }, 4000); // Change testimonial every 4 seconds
-    return () => clearInterval(interval); // Cleanup
-  }, [testimonials.length]);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSend = () => {
+    if (!userInput.trim()) return;
+
+    const userMessage = { role: 'user', content: userInput };
+    const botMessage = {
+      role: 'bot',
+      content: "That's a great question! Try breaking the problem into parts and solving step by step.",
+    };
+
+    setChatHistory((prev) => [...prev, userMessage, botMessage]);
+    setUserInput('');
+  };
 
   return (
     <div className="flex flex-col gap-12">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to AlgoAce</h1>
-        <p className="text-muted-foreground">
-          Your comprehensive platform for Data Structures and Algorithms preparation
-        </p>
+      {/* Header with Top-Right Additions */}
+      <div className="flex justify-between items-start flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to AlgoAce</h1>
+          <p className="text-muted-foreground">
+            Your comprehensive platform for Data Structures and Algorithms preparation
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 ml-auto mt-2">
+          <div className="flex items-center gap-1 text-sm text-orange-500 font-medium">
+            🔥 <span>5-day streak</span>
+          </div>
+          <button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition">
+            🎲 Random Problem
+          </button>
+          <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            🎯 Set Goal
+          </button>
+        </div>
       </div>
 
       {/* Features Section */}
@@ -53,7 +86,6 @@ export default function Home() {
             Structured learning paths to guide your DSA journey
           </p>
         </div>
-
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <ListChecks className="text-green-500" />
@@ -63,7 +95,6 @@ export default function Home() {
             Curated problems to strengthen your problem-solving skills
           </p>
         </div>
-
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <LineChart className="text-purple-500" />
@@ -116,8 +147,62 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Divider Line above Footer */}
-      <div className="border-t border-muted-foreground border-t-[0.1px] mt-1" /> 
+      {/* Mascot: AlgoBuddy Chat Button */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={() => setShowCoach(!showCoach)}
+          className="transition hover:scale-105"
+        >
+          <Image
+            src="/algobuddy.jpg"
+            alt="AlgoBuddy Mascot"
+            width={64}
+            height={64}
+            className="rounded-full shadow-md border border-blue-800"
+          />
+        </button>
+      </div>
+
+      {/* Chat Popup */}
+      {showCoach && (
+        <div className="fixed bottom-24 right-4 w-80 bg-white border border-gray-200 shadow-lg rounded-lg flex flex-col z-50">
+          <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-t-lg flex justify-between items-center">
+            <span>🤖 AlgoBuddy</span>
+            <button onClick={() => setShowCoach(false)} className="text-white text-xs">✕</button>
+          </div>
+          <div className="p-4 h-60 overflow-y-auto text-sm space-y-2">
+            {chatHistory.map((msg, index) => (
+              <div key={index} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
+                <div
+                  className={`inline-block px-3 py-2 rounded-lg ${
+                    msg.role === 'user'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-2 border-t flex gap-2">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-gray-500"
+              placeholder="Ask me something..."
+            />
+            <button
+              onClick={handleSend}
+              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded-md"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-transparent text-muted-foreground py-1">
