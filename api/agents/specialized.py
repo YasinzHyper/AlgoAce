@@ -1,7 +1,33 @@
 # from .base import DSAAgent
 from crewai import Agent, LLM
-from tools import RoadmapTool, ProblemRecommendationTool, FeedbackTool, ExplanationTool
+from tools import RoadmapTool
 from config import MODEL,GEMINI_API_KEY
+from crewai_tools import CSVSearchTool
+
+csv_tool = CSVSearchTool(
+    csv="dataset/leetcode-problems.csv",
+    config=dict(
+        llm=dict(
+            provider="google", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model=MODEL,
+                api_key=GEMINI_API_KEY,
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google", # or openai, ollama, ...
+            config=dict(
+                model="models/embedding-001",
+                task_type="retrieval_document",
+                # api_key=GEMINI_API_KEY,
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
 
 class RoadmapAgent(Agent):
     def __init__(self):
@@ -19,30 +45,31 @@ class ProblemRecommenderAgent(Agent):
         super().__init__(
             name="Problem Recommender",
             role="Problem Selection Specialist",
-            llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
+            llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17",api_key=GEMINI_API_KEY),
             goal="Recommend relevant DSA problems based on the user's weekly topics, difficulty, and company tags.",
-            backstory="Experienced in curating problems tailored to user progress and goals.",
-            tools=[ProblemRecommendationTool()]
+            backstory="You’re an expert in curating coding problems tailored to learning goals.",
+            tools=[csv_tool],
+            verbose=True
         )
 
-class FeedbackAgent(Agent):
-    def __init__(self):
-        super().__init__(
-            name="Progress Analyst",
-            role="Learning Progress Specialist",
-            llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
-            goal="Analyze user progress against their roadmap and provide actionable feedback.",
-            backstory="Expert in learning analytics and performance improvement strategies.",
-            tools=[FeedbackTool()]
-        )
+# class FeedbackAgent(Agent):
+#     def __init__(self):
+#         super().__init__(
+#             name="Progress Analyst",
+#             role="Learning Progress Specialist",
+#             llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
+#             goal="Analyze user progress against their roadmap and provide actionable feedback.",
+#             backstory="Expert in learning analytics and performance improvement strategies.",
+#             tools=[FeedbackTool()]
+#         )
 
-class ExplanationAgent(Agent):
-    def __init__(self):
-        super().__init__(
-            name="Solution Expert",
-            role="Problem Solution Specialist",
-            llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
-            goal="Provide clear explanations and hints for DSA problems on demand.",
-            backstory="Skilled at breaking down complex problems into understandable steps.",
-            tools=[ExplanationTool()]
-        )
+# class ExplanationAgent(Agent):
+#     def __init__(self):
+#         super().__init__(
+#             name="Solution Expert",
+#             role="Problem Solution Specialist",
+#             llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
+#             goal="Provide clear explanations and hints for DSA problems on demand.",
+#             backstory="Skilled at breaking down complex problems into understandable steps.",
+#             tools=[ExplanationTool()]
+#         )

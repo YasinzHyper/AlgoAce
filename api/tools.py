@@ -90,28 +90,63 @@ class RoadmapTool(BaseTool):
             print(f"Generated error response: {error_msg}")  # Debug output
             return error_msg
 
-class ProblemRecommendationTool(BaseTool):
-    name: str = "Problem Recommendation Tool"
-    description: str = "Recommends problems based on topics and difficulty."
+# class ProblemRecommendationTool(BaseTool):
+#     name: str = "Problem Recommendation Tool"
+#     description: str = "Recommends problems based on topics, difficulty, and optionally company from the CSV dataset."
 
-    def _run(self, week: int, topics: list, difficulty: str, company_tags: list) -> str:
-        # Use CSVSearchTool or custom logic to find problems
-        return json.dumps({"problems": "list of problems"})
+#     def __init__(self):
+#         self.csv_tool = CSVSearchTool(csv="dataset/leetcode-problems.csv")
 
-class ExplanationTool(BaseTool):
-    name: str = "Explanation Tool"
-    description: str = "Provides explanations for problems."
+#     def _run(self, roadmap_data: list, company: str = None, num_problems_per_topic: int = 3) -> list:
+#         result = []
+#         for week_data in roadmap_data:
+#             week = week_data["week"]
+#             dsa_topics = week_data["DSA"]
+#             weekly_problems = {"week": week, "problems": []}
+#             for topic, difficulty in dsa_topics.items():
+#                 # Map difficulty levels
+#                 if difficulty == "Basic":
+#                     csv_difficulty = "Easy"
+#                 elif difficulty == "Intermediate":
+#                     csv_difficulty = "Medium"
+#                 elif difficulty == "Advanced":
+#                     csv_difficulty = "Hard"
+#                 else:
+#                     continue
+#                 # Construct query for CSVSearchTool
+#                 query = f"SELECT id FROM csv WHERE related_topics LIKE '%{topic}%' AND difficulty = '{csv_difficulty}'"
+#                 if company:
+#                     query += f" AND companies LIKE '%{company}%'"
+#                 query += f" LIMIT {num_problems_per_topic}"
+#                 search_results = self.csv_tool.run(query)
+#                 # Extract problem IDs (assuming search_results is a list of dicts)
+#                 problem_ids = [int(result["id"]) for result in search_results]
+#                 weekly_problems["problems"].extend(problem_ids)
+#             result.append(weekly_problems)
+#         return result
 
-    def _run(self, problem_id: str) -> str:
-        # Fetch or generate explanation
-        return "Explanation text"
+# class ProblemRecommendationTool(BaseTool):
+#     name: str = "Problem Recommendation Tool"
+#     description: str = "Recommends problems based on topics and difficulty."
 
-class FeedbackTool(BaseTool):
-    name: str = "Feedback Tool"
-    description: str = "Analyzes user progress and provides feedback."
+#     def _run(self, week: int, topics: list, difficulty: str, company_tags: list) -> str:
+#         # Use CSVSearchTool or custom logic to find problems
+#         return json.dumps({"problems": "list of problems"})
 
-    def _run(self, user_id: str) -> str:
-        supabase = create_client("your-supabase-url", "your-supabase-key")
-        # Fetch user progress and roadmap
-        # Calculate completion percentage and focus areas
-        return "Feedback text"
+# class ExplanationTool(BaseTool):
+#     name: str = "Explanation Tool"
+#     description: str = "Provides explanations for problems."
+
+#     def _run(self, problem_id: str) -> str:
+#         # Fetch or generate explanation
+#         return "Explanation text"
+
+# class FeedbackTool(BaseTool):
+#     name: str = "Feedback Tool"
+#     description: str = "Analyzes user progress and provides feedback."
+
+#     def _run(self, user_id: str) -> str:
+#         supabase = create_client("your-supabase-url", "your-supabase-key")
+#         # Fetch user progress and roadmap
+#         # Calculate completion percentage and focus areas
+#         return "Feedback text"

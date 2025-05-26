@@ -7,7 +7,7 @@ from agents.specialized import RoadmapTool
 import json
 
 router = APIRouter()
-dsa_crew = DSACrew()
+# dsa_crew = DSACrew()
 
 async def get_current_user(token: str):  # Simplified; adjust as needed
     try:
