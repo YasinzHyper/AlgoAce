@@ -25,15 +25,20 @@ const navigation = [
     icon: "💻",
   },
   {
+    name: "Practice",
+    href: "/practice",
+    icon: "🎯",
+  },
+  {
     name: "Analytics",
     href: "/analytics",
     icon: "📊",
   },
-  {
-    name: "Explanations",
-    href: "/explanations",
-    icon: "📝",
-  },
+  // {
+  //   name: "Explanations",
+  //   href: "/explanations",
+  //   icon: "📝",
+  // },
 ]
 
 export function AppSidebar() {
