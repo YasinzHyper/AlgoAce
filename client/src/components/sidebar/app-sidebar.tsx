@@ -1,186 +1,86 @@
 "use client"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useSidebar } from "./sidebar-provider"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { BarChart3, BookOpen, Code2, Home, LogOut, Map, Settings, User } from "lucide-react"
-import { logout } from "@/app/login/actions"
-import { useEffect } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { Skeleton } from "@/components/ui/skeleton"
+import { usePathname } from "next/navigation"
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-// Navigation items for the sidebar
-const navigationItems = [
+const navigation = [
   {
-    title: "Home",
-    icon: Home,
+    name: "Home",
     href: "/",
+    icon: "🏠",
   },
   {
-    title: "Roadmap",
-    icon: Map,
+    name: "Roadmap",
     href: "/roadmap",
+    icon: "🗺️",
   },
   {
-    title: "Problems",
-    icon: Code2,
+    name: "Problems",
     href: "/problems",
+    icon: "💻",
   },
   {
-    title: "Analytics",
-    icon: BarChart3,
+    name: "Analytics",
     href: "/analytics",
+    icon: "📊",
   },
   {
-    title: "Explanations",
-    icon: BookOpen,
+    name: "Explanations",
     href: "/explanations",
+    icon: "📝",
   },
 ]
 
 export function AppSidebar() {
+  const { isOpen, toggle } = useSidebar()
   const pathname = usePathname()
-  const router = useRouter()
-  const { user, loading, refresh } = useAuth()
-
-  useEffect(() => {
-    // console.log("Sidebar auth state:", { user, loading })
-  }, [user, loading])
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-      await refresh() // Force refresh the auth state
-    } catch (error) {
-      console.error("Error logging out:", error)
-    }
-  }
-
-  // Refresh auth state when pathname changes (e.g., after login/logout)
-  useEffect(() => {
-    refresh()
-  }, [pathname, refresh])
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
-      <SidebarHeader className="py-4">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg">
-              <a href="/" >
-                <div className="flex aspect-square  h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Code2 className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="text-lg font-bold">AlgoAce</span>
-                  <span className="text-xs text-muted-foreground">DSA Preparation</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.title}>
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {loading ? (
-              <SidebarMenuButton size="lg" className="cursor-pointer">
-                <Skeleton className="h-6 w-6 rounded-full" />
-                <Skeleton className="h-4 w-24" />
-              </SidebarMenuButton>
-            ) : user ? (
-              <DropdownMenu>
-              <DropdownMenuTrigger className="cursor-pointer" asChild>
-                <SidebarMenuButton size="lg" className="cursor-pointer">
-                  <Avatar className="h-6 w-6">
-                      <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
-                      <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                    <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium">{user.email}</span>
-                      <span className="text-xs text-muted-foreground">Signed in</span>
-                    </div>
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/profile" className="flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>View Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/settings" className="flex items-center">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="flex items-center text-destructive focus:text-destructive cursor-pointer"
-                    onClick={handleLogout}
-                  >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            ) : (
-              <SidebarMenuButton size="lg" asChild>
-                <Link href="/login" className="flex items-center">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback>?</AvatarFallback>
-                  </Avatar>
-                  <span>Sign in</span>
-                </Link>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-
-      <SidebarRail />
-    </Sidebar>
+    <div
+      className={cn(
+        "relative flex flex-col border-r bg-background transition-all duration-300",
+        isOpen ? "w-64" : "w-16"
+      )}
+    >
+      <div className="flex h-14 items-center justify-between border-b px-4">
+        {isOpen && <span className="text-lg font-semibold">AlgoAce</span>}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-auto"
+          onClick={toggle}
+        >
+          {isOpen ? (
+            <ChevronLeft className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+      <ScrollArea className="flex-1 py-2">
+        <nav className="grid gap-1 px-2">
+          {navigation.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                pathname === item.href
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground"
+              )}
+            >
+              <span className="text-lg">{item.icon}</span>
+              {isOpen && <span>{item.name}</span>}
+            </Link>
+          ))}
+        </nav>
+      </ScrollArea>
+    </div>
   )
 }
