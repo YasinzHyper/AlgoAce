@@ -29,6 +29,7 @@ pip install -r requirements.txt
 GEMINI_API_KEY=your_gemini_api_key_here
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
+MODEL='gemini-2.5-flash-preview-05-20'
 ```
 
 5. Run the development server:
