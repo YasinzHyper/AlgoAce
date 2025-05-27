@@ -5,16 +5,16 @@ import { RoadmapEditor } from '@/components/roadmap/roadmap-editor'
 
 const EditRoadmapPage = () => {
   const router = useRouter()
-  const { id } = router.query
+  const { goal } = router.query
   const [initialData, setInitialData] = useState(null)
 
   useEffect(() => {
-    if (!id) return
-    fetch(`/api/roadmaps/${id}`)
+    if (!goal) return
+    fetch(`/api/roadmap/generate${goal}`)
       .then(res => res.json())
       .then(data => setInitialData(data))
       .catch(console.error)
-  }, [id])
+  }, [goal])
 
 interface RoadmapData {
     // Add properties according to your roadmap data structure
@@ -29,13 +29,13 @@ interface SaveData {
 
 const handleSave = async (data: SaveData): Promise<void> => {
     try {
-        const res = await fetch(`/api/roadmaps/${id}`, {
+        const res = await fetch(`/api/roadmaps/${goal}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         })
         if (res.ok) {
-            router.push(`/dashboard/roadmap/${id}`)
+            router.push(`/dashboard/roadmap/${goal}`)
         } else {
             alert('Failed to update roadmap')
         }
