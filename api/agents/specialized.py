@@ -1,102 +1,118 @@
-from .base import DSAAgent
-from tools import RoadmapTool, ProblemRecommendationTool, FeedbackTool, ExplanationTool
-from langchain.agents import Agent
-from typing import Dict, List, Optional
-import pandas as pd
+# from .base import DSAAgent
+from crewai import Agent, LLM
+from tools import RoadmapTool
+from config import MODEL,GEMINI_API_KEY
+from crewai_tools import CSVSearchTool
 
-class RoadmapAgent(DSAAgent):
+csv_tool = CSVSearchTool(
+    csv="dataset/leetcode-problems.csv",
+    config=dict(
+        llm=dict(
+            provider="google", # or google, openai, anthropic, llama2, ...
+            config=dict(
+                model=MODEL,
+                api_key=GEMINI_API_KEY,
+                # temperature=0.5,
+                # top_p=1,
+                # stream=true,
+            ),
+        ),
+        embedder=dict(
+            provider="google", # or openai, ollama, ...
+            config=dict(
+                model="models/embedding-001",
+                task_type="retrieval_document",
+                # api_key=GEMINI_API_KEY,
+                # title="Embeddings",
+            ),
+        ),
+    )
+)
+
+class RoadmapAgent(Agent):
     def __init__(self):
         super().__init__(
             name="Roadmap Expert",
             role="DSA Learning Path Specialist",
+            llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17",api_key=GEMINI_API_KEY),
             goal="Create personalized DSA learning roadmaps based on user goals, time constraints, and knowledge level.",
             backstory="Expert in structuring interview preparation and DSA learning journeys with a focus on user-specific constraints.",
-            tools=[RoadmapTool()]
+            tools=[RoadmapTool()],
         )
 
 class ProblemRecommenderAgent(Agent):
     def __init__(self):
-        super().__init__()
-        self.name = "Problem Recommender"
-        self.description = "Recommends problems based on topics and difficulty"
 
-    async def recommend_problems(self,
-                               topics: List[str],
-                               difficulty_levels: List[str],
-                               companies: Optional[List[str]] = None) -> List[Dict]:
-        """
-        Recommend problems based on topics, difficulty levels, and optionally companies
-        """
-        try:
-            # Load LeetCode dataset
-            # This would be implemented based on your data storage
-            problems_df = pd.read_csv('path_to_leetcode_dataset.csv')
+        # super().__init__()
+        # self.name = "Problem Recommender"
+        # self.description = "Recommends problems based on topics and difficulty"
 
-            # Filter problems based on criteria
-            filtered_problems = problems_df[
-                (problems_df['difficulty'].isin(difficulty_levels)) &
-                (problems_df['related_topics'].apply(lambda x: any(topic in x for topic in topics)))
-            ]
+    # async def recommend_problems(self,
+                               # topics: List[str],
+                               # difficulty_levels: List[str],
+                               # companies: Optional[List[str]] = None) -> List[Dict]:
+        # """
+        # Recommend problems based on topics, difficulty levels, and optionally companies
+        # """
+        # try:
+            # # Load LeetCode dataset
+            # # This would be implemented based on your data storage
+            # problems_df = pd.read_csv('path_to_leetcode_dataset.csv')
 
-            if companies:
-                filtered_problems = filtered_problems[
-                    filtered_problems['companies'].apply(lambda x: any(company in x for company in companies))
-                ]
+            # # Filter problems based on criteria
+            # filtered_problems = problems_df[
+               # (problems_df['difficulty'].isin(difficulty_levels)) &
+               # (problems_df['related_topics'].apply(lambda x: any(topic in x for topic in topics)))
+            # ]
 
-            # Sort by acceptance rate and frequency
-            filtered_problems = filtered_problems.sort_values(
-                by=['acceptance_rate', 'frequency'],
-                ascending=[False, False]
-            )
+            # if companies:
+                # filtered_problems = filtered_problems[
+                    # filtered_problems['companies'].apply(lambda x: any(company in x for company in companies))
+                # ]
 
-            # Convert to list of dictionaries
-            recommendations = filtered_problems.head(10).to_dict('records')
+            # # Sort by acceptance rate and frequency
+            # filtered_problems = filtered_problems.sort_values(
+                # by=['acceptance_rate', 'frequency'],
+                # ascending=[False, False]
+            # )
 
-            return recommendations
-        except Exception as e:
-            print(f"Error recommending problems: {str(e)}")
-            return []
+            # # Convert to list of dictionaries
+            # recommendations = filtered_problems.head(10).to_dict('records')
 
-class FeedbackAgent(DSAAgent):
-    def __init__(self):
+            # return recommendations
+        # except Exception as e:
+            # print(f"Error recommending problems: {str(e)}")
+            # return []
+            
         super().__init__(
-            name="Progress Analyst",
-            role="Learning Progress Specialist",
-            goal="Analyze user progress against their roadmap and provide actionable feedback.",
-            backstory="Expert in learning analytics and performance improvement strategies.",
-            tools=[FeedbackTool()]
+            name="Problem Recommender",
+            role="Problem Selection Specialist",
+            llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17",api_key=GEMINI_API_KEY),
+            goal="Recommend relevant DSA problems based on the user's weekly topics, difficulty, and company tags.",
+            backstory="You’re an expert in curating coding problems tailored to learning goals.",
+            tools=[csv_tool],
+            verbose=True
         )
 
-class ExplanationAgent(Agent):
-    def __init__(self):
-        super().__init__()
-        self.name = "Problem Explainer"
-        self.description = "Provides explanations and hints for problems"
 
-    async def explain_problem(self,
-                            problem_id: str,
-                            question: str) -> str:
-        """
-        Provide explanation or answer to a question about a problem
-        """
-        try:
-            # Load problem details
-            # This would be implemented based on your data storage
-            problem_df = pd.read_csv('path_to_leetcode_dataset.csv')
-            problem = problem_df[problem_df['id'] == problem_id].iloc[0]
+# class FeedbackAgent(Agent):
+#     def __init__(self):
+#         super().__init__(
+#             name="Progress Analyst",
+#             role="Learning Progress Specialist",
+#             llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
+#             goal="Analyze user progress against their roadmap and provide actionable feedback.",
+#             backstory="Expert in learning analytics and performance improvement strategies.",
+#             tools=[FeedbackTool()]
+#         )
 
-            # Generate explanation using the question and problem details
-            # This would be implemented using your preferred LLM
-            explanation = f"""
-            Based on your question about {problem['title']}:
-            
-            {question}
-            
-            Here's an explanation:
-            [This would be generated by your LLM based on the problem details and question]
-            """
-
-            return explanation
-        except Exception as e:
-            print(f"Error explaining problem: {str(e)}")
-            return "Sorry, I couldn't generate an explanation at this time."
+# class ExplanationAgent(Agent):
+#     def __init__(self):
+#         super().__init__(
+#             name="Solution Expert",
+#             role="Problem Solution Specialist",
+#             llm=LLM(model=MODEL,api_key=GEMINI_API_KEY),
+#             goal="Provide clear explanations and hints for DSA problems on demand.",
+#             backstory="Skilled at breaking down complex problems into understandable steps.",
+#             tools=[ExplanationTool()]
+#         )
