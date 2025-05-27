@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Lightbulb, ListChecks, LineChart } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link'; 
 
 export default function Home() {
   const testimonials = [
@@ -31,6 +32,17 @@ export default function Home() {
   ]);
   const [userInput, setUserInput] = useState('');
 
+  // New: Help categories quick suggestions
+  const helpCategories = [
+    'Binary Search',
+    'Recursion',
+    'Dynamic Programming',
+    'Linked List',
+    'Time Complexity',
+    'Graph',
+    'Stack',
+  ];
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % testimonials.length);
@@ -38,17 +50,44 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Bot reply logic based on user input or category clicked
+  const getBotReply = (input: string) => {
+    const lowerInput = input.toLowerCase();
+    if (lowerInput.includes('binary search')) {
+      return 'Binary search is a logarithmic search algorithm. It divides the search interval in half each time. Make sure the array is sorted!';
+    } else if (lowerInput.includes('recursion')) {
+      return 'Recursion is a method of solving a problem where the solution depends on solutions to smaller instances of the same problem.';
+    } else if (lowerInput.includes('dp') || lowerInput.includes('dynamic programming')) {
+      return 'Dynamic Programming (DP) is an optimization technique that solves problems by breaking them into subproblems and storing their results.';
+    } else if (lowerInput.includes('linked list')) {
+      return 'A linked list is a linear data structure where elements are stored in nodes and linked using pointers.';
+    } else if (lowerInput.includes('time complexity')) {
+      return 'Time complexity describes how the runtime of an algorithm changes with input size. Big-O notation is commonly used for this.';
+    } else if (lowerInput.includes('graph')) {
+      return 'Graphs are collections of nodes (vertices) and edges. Common algorithms include DFS, BFS, Dijkstra’s, and Kruskal’s.';
+    } else if (lowerInput.includes('stack')) {
+      return 'A stack is a LIFO (Last In First Out) data structure. Common operations are push, pop, and peek.';
+    }
+    return "That's a great question! Try breaking the problem into parts and solving step by step.";
+  };
+
   const handleSend = () => {
     if (!userInput.trim()) return;
 
     const userMessage = { role: 'user', content: userInput };
-    const botMessage = {
-      role: 'bot',
-      content: "That's a great question! Try breaking the problem into parts and solving step by step.",
-    };
+    const botMessage = { role: 'bot', content: getBotReply(userInput) };
 
     setChatHistory((prev) => [...prev, userMessage, botMessage]);
     setUserInput('');
+  };
+
+  // Handle clicking a help category button
+  const handleCategoryClick = (category: string) => {
+    const userMessage = { role: 'user', content: category };
+    const botMessage = { role: 'bot', content: getBotReply(category) };
+
+    setChatHistory((prev) => [...prev, userMessage, botMessage]);
+    setShowCoach(true); // open chat if closed
   };
 
   return (
@@ -76,35 +115,43 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <Lightbulb className="text-blue-500" />
-            <h3 className="text-lg font-semibold">Follow the Roadmap</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Link href="/roadmap" passHref>
+            <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="text-blue-500" />
+                <h3 className="text-lg font-semibold">Follow the Roadmap</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Structured learning paths to guide your DSA journey
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/problems" passHref>
+            <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+              <div className="flex items-center gap-2 mb-2">
+                <ListChecks className="text-green-500" />
+                <h3 className="text-lg font-semibold">Practice Problems</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Curated problems to strengthen your problem-solving skills
+              </p>
+            </div>
+          </Link>
+
+        <Link href="/analytics" passHref>
+          <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <LineChart className="text-purple-500" />
+              <h3 className="text-lg font-semibold">Track Your Progress</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Visualize your learning journey with detailed analytics
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Structured learning paths to guide your DSA journey
-          </p>
+        </Link>
         </div>
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <ListChecks className="text-green-500" />
-            <h3 className="text-lg font-semibold">Practice Problems</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Curated problems to strengthen your problem-solving skills
-          </p>
-        </div>
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <LineChart className="text-purple-500" />
-            <h3 className="text-lg font-semibold">Track Your Progress</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Visualize your learning journey with detailed analytics
-          </p>
-        </div>
-      </div>
 
       {/* Testimonials Carousel */}
       <div className="relative bg-muted rounded-lg p-6 min-h-[140px]">
@@ -152,6 +199,7 @@ export default function Home() {
         <button
           onClick={() => setShowCoach(!showCoach)}
           className="transition hover:scale-105"
+          aria-label="Toggle AlgoBuddy chat"
         >
           <Image
             src="/algobuddy.jpg"
@@ -170,6 +218,21 @@ export default function Home() {
             <span>🤖 AlgoBuddy</span>
             <button onClick={() => setShowCoach(false)} className="text-white text-xs">✕</button>
           </div>
+
+          {/* Quick Help Categories */}
+          <div className="flex gap-2 flex-wrap p-2 border-b overflow-x-auto">
+            {helpCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategoryClick(category)}
+                className="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs px-3 py-1 rounded-full whitespace-nowrap"
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          {/* Chat Messages */}
           <div className="p-4 h-60 overflow-y-auto text-sm space-y-2">
             {chatHistory.map((msg, index) => (
               <div key={index} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
@@ -185,6 +248,8 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          {/* Input area */}
           <div className="p-2 border-t flex gap-2">
             <input
               type="text"
