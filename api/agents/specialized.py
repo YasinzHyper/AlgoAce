@@ -4,27 +4,15 @@ from tools import RoadmapTool
 from config import MODEL,GEMINI_API_KEY
 from crewai_tools import CSVSearchTool
 
-
+# Initialize CSV search tool with a simpler configuration
 csv_tool = CSVSearchTool(
     csv="dataset/leetcode-problems.csv",
     config=dict(
         llm=dict(
-            provider="google", # or google, openai, anthropic, llama2, ...
+            provider="google",
             config=dict(
                 model=MODEL,
                 api_key=GEMINI_API_KEY,
-                # temperature=0.5,
-                # top_p=1,
-                # stream=true,
-            ),
-        ),
-        embedder=dict(
-            provider="google", # or openai, ollama, ...
-            config=dict(
-                model="models/embedding-001",
-                task_type="retrieval_document",
-                # api_key=GEMINI_API_KEY,
-                # title="Embeddings",
             ),
         ),
     )
@@ -43,54 +31,12 @@ class RoadmapAgent(Agent):
 
 class ProblemRecommenderAgent(Agent):
     def __init__(self):
-
-        # super().__init__()
-        # self.name = "Problem Recommender"
-        # self.description = "Recommends problems based on topics and difficulty"
-
-    # async def recommend_problems(self,
-                               # topics: List[str],
-                               # difficulty_levels: List[str],
-                               # companies: Optional[List[str]] = None) -> List[Dict]:
-        # """
-        # Recommend problems based on topics, difficulty levels, and optionally companies
-        # """
-        # try:
-            # # Load LeetCode dataset
-            # # This would be implemented based on your data storage
-            # problems_df = pd.read_csv('path_to_leetcode_dataset.csv')
-
-            # # Filter problems based on criteria
-            # filtered_problems = problems_df[
-               # (problems_df['difficulty'].isin(difficulty_levels)) &
-               # (problems_df['related_topics'].apply(lambda x: any(topic in x for topic in topics)))
-            # ]
-
-            # if companies:
-                # filtered_problems = filtered_problems[
-                    # filtered_problems['companies'].apply(lambda x: any(company in x for company in companies))
-                # ]
-
-            # # Sort by acceptance rate and frequency
-            # filtered_problems = filtered_problems.sort_values(
-                # by=['acceptance_rate', 'frequency'],
-                # ascending=[False, False]
-            # )
-
-            # # Convert to list of dictionaries
-            # recommendations = filtered_problems.head(10).to_dict('records')
-
-            # return recommendations
-        # except Exception as e:
-            # print(f"Error recommending problems: {str(e)}")
-            # return []
-            
         super().__init__(
             name="Problem Recommender",
             role="Problem Selection Specialist",
             llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17",api_key=GEMINI_API_KEY),
             goal="Recommend relevant DSA problems based on the user's weekly topics, difficulty, and company tags.",
-            backstory="You’re an expert in curating coding problems tailored to learning goals.",
+            backstory="You're an expert in curating coding problems tailored to learning goals.",
             tools=[csv_tool],
             verbose=True
         )
