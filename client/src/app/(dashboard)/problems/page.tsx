@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -242,9 +243,7 @@ export default function ProblemsPage() {
                   </Badge>
                   <div className="flex items-center gap-2">
                     <HelpModal problemId={problem.id} problemTitle={problem.title} />
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
+                    <Link className={buttonVariants({ variant: "outline" })} href={`/problems/${problem.id}`}>View Details</Link>
                   </div>
                 </div>
               </div>
