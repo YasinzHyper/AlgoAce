@@ -1,23 +1,44 @@
-'use client'
-
+"use client"
 import { RoadmapEditor } from '@/components/roadmap/roadmap-editor'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function CreateRoadmapPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const accessToken = searchParams.get('access_token')
 
-  const handleSave = async (data: { title: string; description: string; weeks: number; goal: string }) => {
+  const handleSave = async (data: { goal: string; deadline: string; current_knowledge: Record<string, { level: string }>; weekly_hours: number; weeks: number }) => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/roadmap/generate', {
+      const cleanData = {
+        goal: data.goal?.trim(),
+        deadline: data.deadline?.trim(),
+        current_knowledge: data.current_knowledge,
+        weekly_hours: Number(data.weekly_hours),
+        weeks: Number(data.weeks)
+      }
+      // Debug: log the payload
+      console.log("Sending to backend:", cleanData);
+
+      // Build query string for token if required by backend
+      let url = 'http://localhost:8000/api/roadmap/generate';
+      if (accessToken) {
+        // If backend expects token as query param (?token=...)
+        url += `?token=${encodeURIComponent(accessToken)}`;
+      }
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cleanData),
       })
 
       if (res.ok) {
         router.push('/dashboard/roadmap')
       } else {
-        alert('Failed to create roadmap')
+        const err = await res.text();
+        alert('Failed to create roadmap: ' + err)
       }
     } catch (error) {
       console.error(error)

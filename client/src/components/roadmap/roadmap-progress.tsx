@@ -1,4 +1,3 @@
-'use client'
 
 interface RoadmapProgressProps {
   progress: number
@@ -11,3 +10,5 @@ export const RoadmapProgress: React.FC<RoadmapProgressProps> = ({ progress }) =>
     </div>
   )
 }
+// Usage example:
+// <RoadmapProgress progress={75} />

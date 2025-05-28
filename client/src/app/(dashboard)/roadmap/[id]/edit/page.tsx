@@ -1,42 +1,49 @@
-'use client'
 
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { RoadmapEditor } from '@/components/roadmap/roadmap-editor'
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
 
-export default function EditRoadmapPage() {
-  const { id } = useParams()
+const EditRoadmapPage = () => {
   const router = useRouter()
+  const { goal } = router.query
   const [initialData, setInitialData] = useState(null)
 
   useEffect(() => {
-    async function fetchRoadmap() {
-      const res = await fetch(`http://127.0.0.1:8000/api/roadmap/${id}`)
-      const data = await res.json()
-      setInitialData(data)
-    }
+    if (!goal) return
+    fetch(`/api/roadmap/generate${goal}`)
+      .then(res => res.json())
+      .then(data => setInitialData(data))
+      .catch(console.error)
+  }, [goal])
 
-    if (id) fetchRoadmap()
-  }, [id])
+interface RoadmapData {
+    // Add properties according to your roadmap data structure
+    [key: string]: any;
+}
 
-  const handleSave = async (data: { goal: string; current_knowledge: Record<string, string>; weekly_hours: number; weeks: number }) => {
+
+interface SaveData {
+    // Add properties according to the data being saved
+    [key: string]: any;
+}
+
+const handleSave = async (data: SaveData): Promise<void> => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/roadmap/${id}/edit`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-
-      if (res.ok) {
-        router.push('/dashboard/roadmap')
-      } else {
-        alert('Failed to update roadmap')
-      }
+        const res = await fetch(`/api/roadmaps/${goal}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        })
+        if (res.ok) {
+            router.push(`/dashboard/roadmap/${goal}`)
+        } else {
+            alert('Failed to update roadmap')
+        }
     } catch (error) {
-      console.error(error)
-      alert('Error updating roadmap')
+        console.error(error)
+        alert('Error updating roadmap')
     }
-  }
+}
 
   if (!initialData) return <p>Loading...</p>
 
@@ -47,3 +54,5 @@ export default function EditRoadmapPage() {
     </div>
   )
 }
+
+export default EditRoadmapPage

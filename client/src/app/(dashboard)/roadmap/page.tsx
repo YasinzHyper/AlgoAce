@@ -1,43 +1,66 @@
-'use client'
+"use client"
+import React, { useEffect, useState } from 'react'
+import { RoadmapCard } from '@/components/roadmap/roadmap-card'
+import Link from 'next/link'
 
-import { RoadmapEditor } from '@/components/roadmap/roadmap-editor'
-import { useRouter } from 'next/navigation'
+interface Roadmap {
+  goal: string
+  current_knowledge: string
+  weekly_hours: number
+  weeks: number
+}
 
-export default function CreateRoadmapPage() {
-  const router = useRouter()
+const RoadmapPage = () => {
+  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([])
 
-  const handleSave = async (data: { title: string; description: string; weeks: number; goal: string }) => {
-    try {
-      const token = localStorage.getItem('access_token') // Ensure token is set after login
-      const res = await fetch('http://127.0.0.1:8000/api/roadmap/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          goal: data.goal,
-          current_knowledge: {},
-          weekly_hours: 10,
-          weeks: data.weeks,
-        }),
-      })
-
-      if (res.ok) {
-        router.push('/dashboard/roadmap')
-      } else {
-        alert('Failed to create roadmap')
-      }
-    } catch (error) {
-      console.error(error)
-      alert('Error creating roadmap')
+  useEffect(() => {
+    // Get access_token from URL if present
+    const params = new URLSearchParams(window.location.search)
+    let accessToken = params.get('access_token')
+    
+    // If not in URL, try localStorage
+    if (!accessToken) {
+      accessToken = localStorage.getItem('access_token')
     }
-  }
+
+    let url = 'http://localhost:8000/api/roadmap'
+    if (accessToken) {
+      url += `?token=${encodeURIComponent(accessToken)}`
+    }
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        // If your backend returns { roadmaps: [...] }
+        if (Array.isArray(data)) {
+          setRoadmaps(data)
+        } else if (Array.isArray(data.roadmaps)) {
+          setRoadmaps(data.roadmaps)
+        } else {
+          setRoadmaps([]) // fallback to empty array to avoid crash
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Create New Roadmap</h1>
-      <RoadmapEditor onSave={handleSave} />
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-6">Your Roadmaps</h1>
+
+      <Link
+        href="/roadmap/create"
+        className="inline-block mb-6 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+      >
+        + Create New Roadmap
+      </Link>
+
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        {roadmaps.map(r => (
+          <RoadmapCard key={r.goal} {...r} />
+        ))}
+      </div>
     </div>
   )
 }
+
+export default RoadmapPage
