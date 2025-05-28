@@ -256,7 +256,7 @@ export default function Home() {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-gray-500"
+              className="flex-1 px-3 py-2 text-black text-sm border rounded-md border-blue-400 placeholder-gray-500"
               placeholder="Ask me something..."
             />
             <button
