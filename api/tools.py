@@ -8,7 +8,7 @@ from config import GEMINI_API_KEY
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-def extract_json_str(roadmap:str):
+def extract_json_str(roadmap:str) -> json:
         try:
         # Extract JSON from potential code block
             if '```json' in roadmap:
@@ -36,7 +36,7 @@ class RoadmapTool(BaseTool):
     name: str = "Roadmap Tool"
     description: str = "Generates a personalized DSA roadmap using Gemini API."
     
-    def _run(self, user_input: dict) -> str:
+    def _run(self, user_input: dict) -> json:
         json_example = """
         {   
             "company" : "google"

@@ -1,5 +1,5 @@
 # routers/roadmap_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from supabase_client import supabase
 from models.schema import UserInput
 from agents.crew import DSACrew
@@ -9,13 +9,21 @@ import json
 router = APIRouter()
 # dsa_crew = DSACrew()
 
-async def get_current_user(token: str):  # Simplified; adjust as needed
+async def get_current_user(authorization: str = Header(...)):
+    """
+    Extract and validate Supabase token from Authorization header.
+    """
     try:
+        # Expect 'Bearer <token>'
+        if not authorization.startswith("Bearer "): 
+            raise HTTPException(status_code=401, detail="Invalid authorization header")
+        token = authorization[len("Bearer "):]
         user = supabase.auth.get_user(token)
-        print(user);
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
         return user
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 @router.post("/generate")
 async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)):
@@ -35,7 +43,8 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
         response = supabase.table("roadmaps").insert(roadmap_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to save roadmap")
-        return {"roadmap": roadmap_json}
+        print(roadmap_json)
+        return roadmap_json
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating roadmap: {str(e)}")
     
