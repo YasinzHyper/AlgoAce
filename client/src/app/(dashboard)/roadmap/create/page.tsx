@@ -1,11 +1,13 @@
-"use client"
+"use server"
 import { RoadmapEditor } from '@/components/roadmap/roadmap-editor'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { supabase } from '@/utils/supabase/client'
+// import { useSearchParams } from 'next/navigation'
 
-export default function CreateRoadmapPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const accessToken = searchParams.get('access_token')
+export default async function CreateRoadmapPage() {
+  // const router = useRouter()
+  // const searchParams = useSearchParams()
+  // const accessToken = searchParams.get('access_token')
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
 
   const handleSave = async (data: { goal: string; deadline: string; current_knowledge: Record<string, { level: string }>; weekly_hours: number; weeks: number }) => {
     try {
@@ -21,9 +23,9 @@ export default function CreateRoadmapPage() {
 
       // Build query string for token if required by backend
       let url = 'http://localhost:8000/api/roadmap/generate';
-      if (accessToken) {
+      if (token) {
         // If backend expects token as query param (?token=...)
-        url += `?token=${encodeURIComponent(accessToken)}`;
+        url += `?token=${encodeURIComponent(token)}`;
       }
 
       const res = await fetch(url, {
@@ -35,7 +37,8 @@ export default function CreateRoadmapPage() {
       })
 
       if (res.ok) {
-        router.push('/dashboard/roadmap')
+        // router.push('/dashboard/roadmap')
+        console.log(res)
       } else {
         const err = await res.text();
         alert('Failed to create roadmap: ' + err)
