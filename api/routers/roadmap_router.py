@@ -1,5 +1,5 @@
 # routers/roadmap_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from supabase_client import supabase
 from models.schema import UserInput
 from agents.crew import DSACrew
@@ -9,13 +9,50 @@ import json
 router = APIRouter()
 # dsa_crew = DSACrew()
 
-async def get_current_user(token: str):  # Simplified; adjust as needed
+async def get_current_user(authorization: str = Header(...)):
+    """
+    Extract and validate Supabase token from Authorization header.
+    """
     try:
+        # Expect 'Bearer <token>'
+        if not authorization.startswith("Bearer "): 
+            raise HTTPException(status_code=401, detail="Invalid authorization header")
+        token = authorization[len("Bearer "):]
         user = supabase.auth.get_user(token)
-        print(user);
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
         return user
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+    
+
+@router.get("/")
+async def get_all_roadmaps(user=Depends(get_current_user)):
+    """
+    Get all roadmaps for the authenticated user
+    """
+    try:
+        response = supabase.table("roadmaps").select("*").eq("user_id", user.user.id).execute()
+        return {"roadmaps": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching roadmaps: {str(e)}")
+    
+
+@router.get("/{roadmap_id}")
+async def get_roadmap(roadmap_id: int, user=Depends(get_current_user)):
+    """
+    Get a specific roadmap by ID
+    """
+    try:
+        response = supabase.table("roadmaps").select("*").eq("id", roadmap_id).eq("user_id", user.user.id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Roadmap not found")
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching roadmap: {str(e)}")
+
 
 @router.post("/generate")
 async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)):
@@ -27,6 +64,7 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
             raise HTTPException(status_code=500, detail=roadmap_json["error"])
         roadmap_data = {
             "user_id": user.user.id,
+            "user_input": user_input.dict(),
             "roadmap_data": roadmap_json["roadmap_data"],
             "created_at": "now()",
         }
@@ -35,7 +73,8 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
         response = supabase.table("roadmaps").insert(roadmap_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to save roadmap")
-        return {"roadmap": roadmap_json}
+        print(roadmap_json)
+        return roadmap_json
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating roadmap: {str(e)}")
     
@@ -45,3 +84,22 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
     #     return {"roadmap": result}
     # except Exception as e:
     #     raise HTTPException(status_code=500, detail=f"Error generating roadmap: {str(e)}")
+
+@router.delete("/{roadmap_id}")
+async def delete_roadmap(roadmap_id: int, user=Depends(get_current_user)):
+    """
+    Delete a specific roadmap by ID
+    """
+    try:
+        # First check if roadmap exists and belongs to user
+        response = supabase.table("roadmaps").select("id").eq("id", roadmap_id).eq("user_id", user.user.id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+        # Delete the roadmap
+        delete_response = supabase.table("roadmaps").delete().eq("id", roadmap_id).eq("user_id", user.user.id).execute()
+        return {"message": "Roadmap deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting roadmap: {str(e)}")
