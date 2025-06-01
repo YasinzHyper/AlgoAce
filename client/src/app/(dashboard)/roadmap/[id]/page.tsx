@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
-import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant } from '@xyflow/react'
+import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant, Handle, Position } from '@xyflow/react'
 import { format } from 'date-fns'
 import '@xyflow/react/dist/style.css';
 
@@ -38,6 +38,18 @@ interface Roadmap {
 const WeekNode = ({ data }: { data: { week: number; topics: { category: string; items: [string, string][] }[] } }) => {
   return (
     <div className="w-72 bg-gray-100 border rounded-lg shadow-md p-4">
+      {/* Handle for incoming edges (target) */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ background: '#777' }} // Optional styling
+      />
+      {/* Handle for outgoing edges (source) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={{ background: '#777' }} // Optional styling
+      />
       <h3 className="text-lg font-bold text-gray-800 mb-3 text-center">Week {data.week}</h3>
       {data.topics.map((section) => (
         <div key={section.category} className="mb-4">
@@ -116,8 +128,8 @@ const RoadmapDetailPage = () => {
           id: `edge-${node.id}-${roadmapNodes[index + 1].id}`,
           source: node.id,
           target: roadmapNodes[index + 1].id,
-          type: 'smoothstep',
-          style: { stroke: '#333', strokeWidth: 2},
+          type: ' ',
+          style: { stroke: '#b9d0e8', strokeWidth: 2},
         }))
 
         // Log to debug
@@ -151,9 +163,9 @@ const RoadmapDetailPage = () => {
   const { goal, deadline, weeks, company } = roadmap.user_input
 
   return (
-    <div className="p-6 h-full">
+    <div className="h-full">
       {/* Roadmap Metadata */}
-      <div className="mb-2 p-4 rounded-lg shadow-sm">
+      <div className="p-2 rounded-lg shadow-sm">
         <h1 className="text-2xl font-bold mb-2">{goal}</h1>
         <p className="text-gray-500">
           Deadline: {deadline ? format(new Date(deadline), 'PPP') : 'Not specified'}
@@ -168,7 +180,7 @@ const RoadmapDetailPage = () => {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          defaultViewport={{ x: 50, y: 50, zoom: 0.8 }}
+          defaultViewport={{ x: 50, y: 50, zoom: 1.0 }}
           panOnDrag={true}
           panOnScroll={true}
           zoomOnScroll={true}
