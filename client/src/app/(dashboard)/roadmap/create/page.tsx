@@ -54,7 +54,7 @@ export default function CreateRoadmapPage() {
       goal: "",
       deadline: undefined,
       current_knowledge: [{ topic: "", level: "Basic" }],
-      weekly_hours: 1,
+      weekly_hours: 10,
       weeks: 1,
     },
   })
@@ -239,7 +239,6 @@ export default function CreateRoadmapPage() {
                       type="number"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      defaultValue={10}
                     />
                   </FormControl>
                   <FormMessage />
@@ -257,6 +256,7 @@ export default function CreateRoadmapPage() {
                       type="number"
                       {...field}
                       onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      max={20}
                     />
                   </FormControl>
                   <FormMessage />
