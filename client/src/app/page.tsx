@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Lightbulb, ListChecks, LineChart } from 'lucide-react';
+import { Marquee } from "@/components/magicui/marquee";
 import Image from 'next/image';
-import Link from 'next/link'; 
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const testimonials = [
@@ -24,6 +25,83 @@ export default function Home() {
       name: 'Nikhil T., Backend Developer',
     },
   ];
+  
+  const reviews = [
+    {
+      name: "Rohit K",
+      username: "Final Year CS Student",
+      body: "I've never seen anything like this before. It's amazing. I love it.",
+      img: "https://avatar.vercel.sh/jack",
+    },
+    {
+      name: "Priya S",
+      username: "Aspiring SDE",
+      body: "I don't know what to say. I'm speechless. This is amazing.",
+      img: "https://avatar.vercel.sh/jill",
+    },
+    {
+      name: "Anjali R",
+      username: "Software Engineer",
+      body: "AlgoAce helped me land a job at Google. The structured roadmap and practice problems are gold.",
+      img: "https://avatar.vercel.sh/jane",
+    },
+    {
+      name: "Nikhil T",
+      username: "Backend Developer",
+      body: "AlgoAce’s roadmap made everything less overwhelming. Super helpful for interview prep.",
+      img: "https://avatar.vercel.sh/john",
+    },
+    {
+      name: "Jenny",
+      username: "Senior SDE",
+      body: "I'm at a loss for words. This is amazing. I love it.",
+      img: "https://avatar.vercel.sh/jenny",
+    },
+    {
+      name: "James",
+      username: "Cloud Architect",
+      body: "I'm at a loss for words. This is amazing. I love it.",
+      img: "https://avatar.vercel.sh/james",
+    },
+  ];
+
+  const firstRow = reviews.slice(0, reviews.length / 2);
+  const secondRow = reviews.slice(reviews.length / 2);
+
+  const ReviewCard = ({
+    img,
+    name,
+    username,
+    body,
+  }: {
+    img: string;
+    name: string;
+    username: string;
+    body: string;
+  }) => {
+    return (
+      <figure
+        className={cn(
+          "relative h-full w-64 cursor-pointer overflow-hidden rounded-xl border p-4",
+          // light styles
+          "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
+          // dark styles
+          "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]",
+        )}
+      >
+        <div className="flex flex-row items-center gap-2">
+          <img className="rounded-full" width="32" height="32" alt="" src={img} />
+          <div className="flex flex-col">
+            <figcaption className="text-sm font-medium dark:text-white">
+              {name}
+            </figcaption>
+            <p className="text-xs font-medium dark:text-white/40">{username}</p>
+          </div>
+        </div>
+        <blockquote className="mt-2 text-sm">{body}</blockquote>
+      </figure>
+    );
+  };
 
   const [current, setCurrent] = useState(0);
   const [showCoach, setShowCoach] = useState(false);
@@ -91,7 +169,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
       <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
@@ -154,7 +232,7 @@ export default function Home() {
         </div>
 
       {/* Testimonials Carousel */}
-      <div className="relative bg-muted rounded-lg p-6 min-h-[140px]">
+      {/*<div className="relative bg-muted rounded-lg p-6 min-h-[140px]">
         <h2 className="text-xl font-semibold mb-4">What Our Users Say</h2>
         {testimonials.map((t, i) => (
           <div
@@ -167,7 +245,23 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">— {t.name}</p>
           </div>
         ))}
+      </div>*/}
+
+      <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
+        <Marquee pauseOnHover className="[--duration:20s]">
+          {firstRow.map((review) => (
+            <ReviewCard key={review.username} {...review} />
+          ))}
+        </Marquee>
+        <Marquee reverse pauseOnHover className="[--duration:20s]">
+          {secondRow.map((review) => (
+            <ReviewCard key={review.username} {...review} />
+          ))}
+        </Marquee>
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
       </div>
+
 
       {/* FAQ Section */}
       <div>

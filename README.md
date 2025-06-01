@@ -15,9 +15,9 @@ AlgoAce/
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python version <= 3.11.0
 - Node.js 18 or higher
-- OpenAI API key
+- Gemini API key
 
 ### Backend Setup
 
