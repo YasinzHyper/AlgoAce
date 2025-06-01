@@ -29,6 +29,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+const SIDEBAR_WIDTH = "16em"
+const SIDEBAR_WIDTH_MOBILE = "12rem"
+
 // Navigation items for the sidebar
 const navigationItems = [
   {

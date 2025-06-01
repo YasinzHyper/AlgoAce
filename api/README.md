@@ -4,7 +4,7 @@ This is the backend API for AlgoAce, a DSA learning platform that uses AI to pro
 
 ## Setup
 
-1. Create a virtual environment:
+1. Once you are in the `/api` directory, create a virtual environment:
 ```bash
 python -m venv .venv
 ```
@@ -30,6 +30,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
 MODEL='gemini-2.5-flash-preview-05-20'
+GOOGLE_API_KEY=your_gemini_api_key_here
 ```
 
 5. Run the development server:
@@ -62,5 +63,4 @@ api/
 
 - The API uses FastAPI for the web framework
 - CrewAI for AI agent orchestration
-- LangChain for vector storage and embeddings
 - ChromaDB for vector database 
