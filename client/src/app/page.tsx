@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Lightbulb, ListChecks, LineChart } from 'lucide-react';
 import { Marquee } from "@/components/magicui/marquee";
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { cn } from "@/utils/supabase/utils"
 
 export default function Home() {
   const testimonials = [
