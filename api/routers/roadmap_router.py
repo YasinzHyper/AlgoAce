@@ -59,12 +59,12 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
     try:
         # path = dsa_crew.create_learning_path(user_input.dict())
         tool = RoadmapTool()
-        roadmap_json = tool._run(user_input.dict())
+        roadmap_json = tool._run(user_input.model_dump())
         if "error" in roadmap_json:
             raise HTTPException(status_code=500, detail=roadmap_json["error"])
         roadmap_data = {
             "user_id": user.user.id,
-            "user_input": user_input.dict(),
+            "user_input": user_input.model_dump(),
             "roadmap_data": roadmap_json["roadmap_data"],
             "created_at": "now()",
         }
