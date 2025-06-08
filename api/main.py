@@ -17,7 +17,7 @@ app.add_middleware(
 
 app.include_router(roadmap_router.router, prefix="/api/roadmap")
 app.include_router(user_router.router, prefix="/api/user")
-app.include_router(problem_router.router, prefix="/api/problem")
+app.include_router(problem_router.router, prefix="/api/problems")
 
 # dsa_crew = DSACrew()
 

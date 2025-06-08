@@ -11,7 +11,7 @@ import { Moon, Sun, Monitor } from "lucide-react"
 
 // Define types for theme options
 type ThemeMode = "light" | "dark" | "system"
-type ColorTheme = "red" | "orange" | "green" | "blue" | "yellow" | "violet"
+type ColorTheme = "slate" | "red" | "orange" | "green" | "blue" | "yellow" | "violet"
 type Radius = "0.5rem" | "0.625rem" | "0.75rem" | "1rem"
 
 // Helper functions to get initial values from localStorage
@@ -21,8 +21,8 @@ const getInitialThemeMode = (): ThemeMode => {
 }
 
 const getInitialColorTheme = (): ColorTheme => {
-  if (typeof window === "undefined") return "blue"
-  return (localStorage.getItem("colorTheme") as ColorTheme) || "blue"
+  if (typeof window === "undefined") return "slate"
+  return (localStorage.getItem("colorTheme") as ColorTheme) || "slate"
 }
 
 const getInitialRadius = (): Radius => {
@@ -143,7 +143,7 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <Label>Color Theme</Label>
                 <div className="flex items-center space-x-4 flex-wrap gap-y-4">
-                  {(["red", "orange", "green", "blue", "yellow", "violet"] as ColorTheme[]).map((theme) => (
+                  {(["slate", "red", "orange", "green", "blue", "yellow", "violet"] as ColorTheme[]).map((theme) => (
                     <Button
                       key={theme}
                       variant={colorTheme === theme ? "default" : "outline"}

@@ -489,7 +489,8 @@
   --sidebar-ring: oklch(0.541 0.281 293.009);
 }
 
-/* :root {
+/* Slate Theme */
+:root {
   --radius: 0.625rem;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -556,7 +557,7 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
-} */
+}
 
 @layer base {
   * {

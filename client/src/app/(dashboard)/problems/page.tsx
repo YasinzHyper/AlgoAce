@@ -1,256 +1,250 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { HelpModal } from "@/components/problems/help-modal";
-import Link from 'next/link';
+import { useState, useEffect } from 'react'
+import { supabase } from '@/utils/supabase/client'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Toaster, toast } from 'sonner'
+import RoadmapSelector from '@/components/problems/RoadmapSelector'
+import ProblemCard from '@/components/problems/ProblemCard'
+import WeekPagination from '@/components/problems/WeekPagination'
 
-interface Problem {
-  id: string;
-  title: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  topics: string[];
-  companies: string[];
-  acceptance_rate: number;
-  status: 'pending' | 'completed' | 'skipped';
+// Define interfaces for raw problem data and transformed problem details
+interface RawProblemData {
+  id: number
+  title: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  related_topics: string
+  companies: string
+  acceptance_rate: number
+}
+
+interface ProblemDetail {
+  id: number
+  title: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  related_topics: string[]
+  companies: string[]
+  acceptance_rate: number
+}
+
+interface Roadmap {
+  id: number
+  user_input: {
+    goal: string
+    weeks: number
+  }
+}
+
+interface Task {
+  id: number
+  week: number
+  lc_problem_ids: number[]
+  other_topics: string[]
 }
 
 export default function ProblemsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
-  const [topicFilter, setTopicFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([])
+  const [selectedRoadmap, setSelectedRoadmap] = useState<Roadmap | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [currentWeek, setCurrentWeek] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [problemDataset, setProblemDataset] = useState<RawProblemData[] | null>(null)
+  const [currentWeekProblems, setCurrentWeekProblems] = useState<ProblemDetail[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
+  const [topicFilter, setTopicFilter] = useState<string>('all')
 
-  // Mock data - replace with API call
-  const problems: Problem[] = [
-    {
-      id: '1',
-      title: 'Two Sum',
-      difficulty: 'Easy',
-      topics: ['Arrays', 'Hash Table'],
-      companies: ['Google', 'Amazon'],
-      acceptance_rate: 45.5,
-      status: 'pending'
-    },
-    {
-      id: '2',
-      title: 'Add Two Numbers',
-      difficulty: 'Medium',
-      topics: ['Linked List', 'Math'],
-      companies: ['Microsoft', 'Bloomberg'],
-      acceptance_rate: 35.2,
-      status: 'completed'
-    },
-    {
-      id: '3',
-      title: 'Longest Substring Without Repeating Characters',
-      difficulty: 'Medium',
-      topics: ['Hash Table', 'String', 'Sliding Window'],
-      companies: ['Amazon', 'Google', 'Microsoft'],
-      acceptance_rate: 30.8,
-      status: 'pending'
-    },
-    {
-      id: '4',
-      title: 'Median of Two Sorted Arrays',
-      difficulty: 'Hard',
-      topics: ['Array', 'Binary Search', 'Divide and Conquer'],
-      companies: ['Google', 'Microsoft', 'Amazon'],
-      acceptance_rate: 28.5,
-      status: 'skipped'
-    },
-    {
-      id: '5',
-      title: 'Valid Parentheses',
-      difficulty: 'Easy',
-      topics: ['Stack', 'String'],
-      companies: ['Amazon', 'Google', 'Microsoft'],
-      acceptance_rate: 42.3,
-      status: 'completed'
-    },
-    {
-      id: '6',
-      title: 'Merge K Sorted Lists',
-      difficulty: 'Hard',
-      topics: ['Linked List', 'Heap', 'Divide and Conquer'],
-      companies: ['Amazon', 'Google', 'Microsoft'],
-      acceptance_rate: 25.7,
-      status: 'pending'
-    },
-    {
-      id: '7',
-      title: 'Reverse Integer',
-      difficulty: 'Easy',
-      topics: ['Math'],
-      companies: ['Amazon', 'Google'],
-      acceptance_rate: 38.9,
-      status: 'completed'
-    },
-    {
-      id: '8',
-      title: 'Longest Palindromic Substring',
-      difficulty: 'Medium',
-      topics: ['String', 'Dynamic Programming'],
-      companies: ['Amazon', 'Microsoft'],
-      acceptance_rate: 32.1,
-      status: 'pending'
-    },
-    {
-      id: '9',
-      title: 'Regular Expression Matching',
-      difficulty: 'Hard',
-      topics: ['String', 'Dynamic Programming'],
-      companies: ['Google', 'Microsoft'],
-      acceptance_rate: 27.4,
-      status: 'skipped'
-    },
-    {
-      id: '10',
-      title: 'Container With Most Water',
-      difficulty: 'Medium',
-      topics: ['Array', 'Two Pointers'],
-      companies: ['Amazon', 'Google'],
-      acceptance_rate: 33.8,
-      status: 'pending'
+  // Fetch roadmaps on mount
+  useEffect(() => {
+    const fetchRoadmaps = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) throw new Error('Not authenticated')
+        const token = sessionData.session.access_token
+
+        const response = await fetch('http://localhost:8000/api/roadmap', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!response.ok) throw new Error('Failed to fetch roadmaps')
+        const { roadmaps } = await response.json()
+        setRoadmaps(roadmaps)
+
+        if (roadmaps.length > 0) {
+          setSelectedRoadmap(roadmaps[0])
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        toast.error('Error fetching roadmaps', { description: errorMessage })
+      } finally {
+        setLoading(false)
+      }
     }
-  ];
+    fetchRoadmaps()
+  }, [])
 
-  const filteredProblems = problems.filter(problem => {
-    const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDifficulty = difficultyFilter === 'all' || problem.difficulty.toLowerCase() === difficultyFilter;
-    const matchesTopic = topicFilter === 'all' || problem.topics.includes(topicFilter);
-    const matchesStatus = statusFilter === 'all' || problem.status === statusFilter;
-    return matchesSearch && matchesDifficulty && matchesTopic && matchesStatus;
-  });
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty.toLowerCase()) {
-      case 'easy':
-        return 'bg-green-500/10 text-green-500 hover:bg-green-500/20';
-      case 'medium':
-        return 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20';
-      case 'hard':
-        return 'bg-red-500/10 text-red-500 hover:bg-red-500/20';
-      default:
-        return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20';
+  // Fetch problem dataset on mount
+  useEffect(() => {
+    const fetchProblemDataset = async () => {
+      try {
+        const response = await fetch('/leetcode-problems-dataset.json')
+        if (!response.ok) throw new Error('Failed to fetch problem dataset')
+        const data: RawProblemData[] = await response.json()
+        setProblemDataset(data)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        toast.error('Error fetching problem dataset', { description: errorMessage })
+      }
     }
-  };
+    fetchProblemDataset()
+  }, [])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-500/10 text-green-500 hover:bg-green-500/20';
-      case 'skipped':
-        return 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20';
-      default:
-        return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20';
+  // Fetch tasks when roadmap changes
+  useEffect(() => {
+    if (!selectedRoadmap) return
+
+    const fetchTasks = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) throw new Error('Not authenticated')
+        const token = sessionData.session.access_token
+
+        const response = await fetch(`http://localhost:8000/api/problems/${selectedRoadmap.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!response.ok) throw new Error('Failed to fetch tasks')
+        const { tasks } = await response.json()
+        setTasks(tasks)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        toast.error('Error fetching tasks', { description: errorMessage })
+      }
     }
-  };
+    fetchTasks()
+  }, [selectedRoadmap])
+
+  // Update current week's problems when tasks or week changes
+  useEffect(() => {
+    if (!problemDataset || !tasks.length) return
+
+    const weekTask = tasks.find(task => task.week === currentWeek)
+    if (!weekTask) {
+      setCurrentWeekProblems([])
+      return
+    }
+
+    const problemDetails = weekTask.lc_problem_ids
+      .map(id => problemDataset.find(p => p.id === id))
+      .filter((p): p is RawProblemData => p !== undefined)
+      .map(p => ({
+        ...p,
+        related_topics: p.related_topics ? p.related_topics.split(',').map(t => t.trim()) : [],
+        companies: p.companies ? p.companies.split(',').map(c => c.trim()) : [],
+      }))
+
+    setCurrentWeekProblems(problemDetails)
+  }, [tasks, currentWeek, problemDataset])
+
+  // Apply filters to current week's problems
+  const filteredProblems = currentWeekProblems.filter(problem => {
+    const matchesSearch = problem.title.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesDifficulty = difficultyFilter === 'all' || problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase()
+    const matchesTopic = topicFilter === 'all' || problem.related_topics.some(t => t.toLowerCase() === topicFilter.toLowerCase())
+    return matchesSearch && matchesDifficulty && matchesTopic
+  })
+
+  if (loading) return <div className="p-6 text-center">Loading...</div>
+  if (!selectedRoadmap) return <div className="p-6 text-center">No roadmaps found</div>
+
+  // Define weekTask and otherTopics to handle undefined cases safely
+  const weekTask = tasks.find(task => task.week === currentWeek);
+  const otherTopics = weekTask ? weekTask.other_topics : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Problems</h1>
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search problems..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-[300px]"
-          />
-          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Difficulties</SelectItem>
-              <SelectItem value="easy">Easy</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="hard">Hard</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Topic" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Topics</SelectItem>
-              <SelectItem value="Arrays">Arrays</SelectItem>
-              <SelectItem value="Hash Table">Hash Table</SelectItem>
-              <SelectItem value="Linked List">Linked List</SelectItem>
-              <SelectItem value="String">String</SelectItem>
-              <SelectItem value="Dynamic Programming">Dynamic Programming</SelectItem>
-              <SelectItem value="Math">Math</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="skipped">Skipped</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <div className="p-6">
+      <Toaster />
+      <h1 className="text-3xl font-bold mb-6">Problems Dashboard</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProblems.map((problem) => (
-          <Card key={problem.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <Link href={`/problems/${problem.id}`}>
-                    <CardTitle className="hover:text-blue-500 transition-colors">
-                      {problem.title}
-                    </CardTitle>
-                  </Link>
-                  <CardDescription>
-                    Acceptance Rate: {problem.acceptance_rate}%
-                  </CardDescription>
-                </div>
-                <Badge 
-                  variant="secondary"
-                  className={getDifficultyColor(problem.difficulty)}
-                >
-                  {problem.difficulty}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {problem.topics.map((topic) => (
-                    <Badge key={topic} variant="outline">
-                      {topic}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between">
-                  <Badge 
-                    variant="secondary"
-                    className={getStatusColor(problem.status)}
-                  >
-                    {problem.status.charAt(0).toUpperCase() + problem.status.slice(1)}
-                  </Badge>
-                  <div className="flex items-center gap-2">
-                    <HelpModal problemId={problem.id} problemTitle={problem.title} />
-                    <Link className={buttonVariants({ variant: "outline" })} href={`/problems/${problem.id}`}>View Details</Link>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Roadmap Selector */}
+      <RoadmapSelector
+        roadmaps={roadmaps}
+        selectedRoadmap={selectedRoadmap}
+        onSelect={(roadmap) => {
+          setSelectedRoadmap(roadmap)
+          setCurrentWeek(1)
+        }}
+      />
+
+      {/* Filters and Problems for Current Week */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Week {currentWeek} Problems</CardTitle>
+            <div className="flex items-center gap-4">
+              <Input
+                placeholder="Search problems..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-[300px]"
+              />
+              <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Difficulties</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={topicFilter} onValueChange={setTopicFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Topic" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Topics</SelectItem>
+                  <SelectItem value="arrays">Arrays</SelectItem>
+                  <SelectItem value="hash table">Hash Table</SelectItem>
+                  <SelectItem value="linked list">Linked List</SelectItem>
+                  <SelectItem value="string">String</SelectItem>
+                  <SelectItem value="dynamic programming">Dynamic Programming</SelectItem>
+                  <SelectItem value="math">Math</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredProblems.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredProblems.map((problem) => (
+                <ProblemCard key={problem.id} problem={problem} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No problems match the current filters.</p>
+          )}
+          {otherTopics.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-semibold text-gray-700">Other Topics:</h4>
+              <ul className="list-disc pl-5 text-gray-600">
+                {otherTopics.map((topic, idx) => (
+                  <li key={idx}>{topic}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Week Pagination */}
+      <WeekPagination
+        totalWeeks={selectedRoadmap.user_input.weeks}
+        currentWeek={currentWeek}
+        onWeekChange={setCurrentWeek}
+      />
     </div>
-  );
-} 
+  )
+}

@@ -81,7 +81,7 @@ async def recommend_problems(roadmap_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
 
 # Get all problems for a roadmap
-@router.get("/problems/{roadmap_id}")
+@router.get("/{roadmap_id}")
 async def get_all_problems(roadmap_id: int, user=Depends(get_current_user)):
     """
     Retrieve all problems (tasks) for a specific roadmap.
@@ -110,7 +110,7 @@ async def get_all_problems(roadmap_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Error fetching tasks: {str(e)}")
 
 # Get problems for a specific week in a roadmap
-@router.get("/problems/{roadmap_id}/week/{week}")
+@router.get("/{roadmap_id}/week/{week}")
 async def get_week_problems(roadmap_id: int, week: int, user=Depends(get_current_user)):
     """
     Retrieve problems (tasks) for a specific week in a roadmap.
@@ -143,7 +143,7 @@ async def get_week_problems(roadmap_id: int, week: int, user=Depends(get_current
         raise HTTPException(status_code=500, detail=f"Error fetching task: {str(e)}")
 
 # Delete all problems for a roadmap
-@router.delete("/problems/{roadmap_id}")
+@router.delete("/{roadmap_id}")
 async def delete_all_problems(roadmap_id: int, user=Depends(get_current_user)):
     """
     Delete all problems (tasks) for a specific roadmap.
@@ -172,7 +172,7 @@ async def delete_all_problems(roadmap_id: int, user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=f"Error deleting tasks: {str(e)}")
 
 # Delete problems for a specific week in a roadmap
-@router.delete("/problems/{roadmap_id}/week/{week}")
+@router.delete("/{roadmap_id}/week/{week}")
 async def delete_week_problems(roadmap_id: int, week: int, user=Depends(get_current_user)):
     """
     Delete problems (tasks) for a specific week in a roadmap.
@@ -205,7 +205,7 @@ async def delete_week_problems(roadmap_id: int, week: int, user=Depends(get_curr
         raise HTTPException(status_code=500, detail=f"Error deleting task: {str(e)}")
 
 # Update problems for a specific week in a roadmap
-@router.put("/problems/{roadmap_id}/week/{week}")
+@router.put("/{roadmap_id}/week/{week}")
 async def update_week_problems(
     roadmap_id: int, 
     week: int, 
