@@ -9,6 +9,7 @@ import { Toaster, toast } from 'sonner'
 import RoadmapSelector from '@/components/problems/RoadmapSelector'
 import ProblemCard from '@/components/problems/ProblemCard'
 import WeekPagination from '@/components/problems/WeekPagination'
+import { useSearchParams } from 'next/navigation'
 
 // Define interfaces for raw problem data and transformed problem details
 interface RawProblemData {
@@ -55,6 +56,7 @@ export default function ProblemsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
   const [topicFilter, setTopicFilter] = useState<string>('all')
+  const searchParams = useSearchParams()
 
   // Fetch roadmaps on mount
   useEffect(() => {
@@ -71,7 +73,14 @@ export default function ProblemsPage() {
         const { roadmaps } = await response.json()
         setRoadmaps(roadmaps)
 
-        if (roadmaps.length > 0) {
+        // Check for roadmap ID in URL
+        const roadmapId = searchParams.get('roadmap')
+        if (roadmapId) {
+          const roadmap = roadmaps.find(r => r.id === parseInt(roadmapId))
+          if (roadmap) {
+            setSelectedRoadmap(roadmap)
+          }
+        } else if (roadmaps.length > 0) {
           setSelectedRoadmap(roadmaps[0])
         }
       } catch (error) {
@@ -82,7 +91,7 @@ export default function ProblemsPage() {
       }
     }
     fetchRoadmaps()
-  }, [])
+  }, [searchParams])
 
   // Fetch problem dataset on mount
   useEffect(() => {
