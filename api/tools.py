@@ -5,6 +5,10 @@ import json
 from google import genai  # Import Google's generative AI library
 from google.genai import types
 from config import GEMINI_API_KEY
+import os
+import math
+import pandas as pd
+from typing import List, Dict, Optional
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -69,7 +73,7 @@ class RoadmapTool(BaseTool):
         {json_example}
 
         Note: 
-        - The company field can be empty if the user did not mention any company name in the "Goal" field, and if they mention more than one company then separate them by commas and include them into the "company" field (e.g, "google, facebook, netflix).
+        - The company field can be empty if the user did not mention any company name in the "Goal" field, and if they mention more than one company then separate them by commas and include them into the "company" field (e.g, "google, facebook, netflix").
         - The example is not exhaustive, and it is only provided for the structure of the JSON response. (the number of weeks, number of topics, etc. can vary based on the user input) 
         - Ensure the response is a valid JSON array in this exact format without any extra markdown formatting (return it in plaintext format).
         """
@@ -89,6 +93,95 @@ class RoadmapTool(BaseTool):
             error_msg = {"error": f"Failed to generate roadmap: {str(e)}"}
             print(f"Generated error response: {error_msg}")  # Debug output
             return error_msg
+        
+class ProblemRecommendationTool(BaseTool):
+    """Tool for generating problem recommendations from the LeetCode dataset."""
+    name: str = "Problem Recommendation Tool"
+    description: str = (
+        "Recommends LeetCode problems for each week based on DSA topics, difficulty levels, "
+        "company preferences, and user's available weekly hours."
+    )
+    df: pd.DataFrame = None
+
+    def __init__(self):
+        super().__init__()
+        # Load the dataset
+        dataset_path = os.path.join(os.path.dirname(__file__), "dataset", "leetcode-problems.csv")
+        self.df = pd.read_csv(dataset_path)
+        # Precompute normalized topics as a list for each problem
+        self.df['normalized_topics'] = self.df['related_topics'].apply(
+            lambda x: [self.normalize_topic(t.strip()) for t in x.split(',')] if pd.notnull(x) else []
+        )
+        # Verify required columns
+        required_columns = ['id', 'difficulty', 'related_topics', 'companies']
+        for col in required_columns:
+            if col not in self.df.columns:
+                raise ValueError(f"Dataset missing required column: {col}")
+
+    def normalize_topic(self, topic: str) -> str:
+        """Normalize a topic by converting to lowercase and removing trailing 's'."""
+        return topic.lower().rstrip('s')
+
+    def _run(self, roadmap_data: List[Dict], company: Optional[str] = None, user_input: Optional[Dict] = None) -> List[Dict]:
+        """Generate problem recommendations based on roadmap, company preferences, and user input."""
+        # Validate user input
+        if user_input is None or 'weekly_hours' not in user_input:
+            raise ValueError("user_input must contain 'weekly_hours'")
+        weekly_hours = user_input['weekly_hours']
+
+        # Define mappings and constants
+        diff_map = {"Basic": "Easy", "Intermediate": "Medium", "Advanced": "Hard"}
+        time_per_problem = {"Easy": 1/3, "Medium": 2/3, "Hard": 1}  # Hours (20, 40, 60 minutes)
+
+        result = []
+        for week_data in roadmap_data:
+            week = week_data.get("week")
+            dsa_topics = week_data.get("DSA", {})
+            # Extract other topics from "Other" field in roadmap_data
+            other_topics = list(week_data.get("Other", {}).keys()) if week_data.get("Other") else []
+            num_topics = len(dsa_topics)
+            if num_topics == 0:
+                continue  # Skip weeks with no DSA topics
+
+            # Allocate time equally among topics
+            time_per_topic = weekly_hours / num_topics
+            weekly = {"week": week, "problems": [], "other_topics": other_topics}
+
+            for topic, level in dsa_topics.items():
+                # Map difficulty
+                problem_difficulty = diff_map.get(level)
+                if not problem_difficulty:
+                    continue  # Skip invalid difficulty levels
+
+                # Calculate number of problems
+                time_per_problem_hours = time_per_problem[problem_difficulty]
+                num_problems = max(1, math.floor(time_per_topic / time_per_problem_hours))
+
+                # Normalize roadmap topic
+                normalized_topic = self.normalize_topic(topic)
+
+                # Filter problems by difficulty and topic
+                df_filtered = self.df[
+                    (self.df["difficulty"] == problem_difficulty) &
+                    (self.df['normalized_topics'].apply(lambda x: normalized_topic in x))
+                ].copy()
+
+                # Prioritize by company if specified
+                if company:
+                    preferred_companies = [c.strip().lower() for c in company.split(",")]
+                    df_filtered['preferred'] = df_filtered['companies'].apply(
+                        lambda x: any(c in preferred_companies for c in ([comp.strip().lower() for comp in x.split(',')] if pd.notnull(x) else []))
+                    )
+                    df_filtered = df_filtered.sort_values(by='preferred', ascending=False)
+
+                # Select problem IDs
+                problem_ids = df_filtered["id"].head(num_problems).tolist()
+                weekly["problems"].extend(problem_ids)
+
+            if weekly["problems"]:  # Only append weeks with recommendations
+                result.append(weekly)
+
+        return result                                   
 
 # class ProblemRecommendationTool(BaseTool):
 #     name: str = "Problem Recommendation Tool"

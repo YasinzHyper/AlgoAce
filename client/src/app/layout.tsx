@@ -11,6 +11,7 @@ import {
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import Script from "next/script";
 // import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,6 +28,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script id="theme-script" strategy="beforeInteractive">
+          {`
+            (function() {
+              const colorTheme = localStorage.getItem('colorTheme') || 'slate';
+              document.documentElement.setAttribute('data-theme', colorTheme);
+              const themeMode = localStorage.getItem('theme') || 'system';
+              const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              document.documentElement.classList.toggle('dark', isDark);
+            })();
+          `}
+        </Script>
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider

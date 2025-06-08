@@ -4,6 +4,7 @@ from supabase_client import supabase
 from models.schema import UserInput
 from agents.crew import DSACrew
 from agents.specialized import RoadmapTool
+from services.problem_service import generate_and_save_recommendations
 import json
 
 router = APIRouter()
@@ -59,12 +60,12 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
     try:
         # path = dsa_crew.create_learning_path(user_input.dict())
         tool = RoadmapTool()
-        roadmap_json = tool._run(user_input.dict())
+        roadmap_json = tool._run(user_input.model_dump())
         if "error" in roadmap_json:
             raise HTTPException(status_code=500, detail=roadmap_json["error"])
         roadmap_data = {
             "user_id": user.user.id,
-            "user_input": user_input.dict(),
+            "user_input": user_input.model_dump(),
             "roadmap_data": roadmap_json["roadmap_data"],
             "created_at": "now()",
         }
@@ -73,6 +74,16 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
         response = supabase.table("roadmaps").insert(roadmap_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to save roadmap")
+        
+        roadmap_id = response.data[0]['id']
+        # Automate problem recommendation
+        generate_and_save_recommendations(
+            roadmap_id=roadmap_id,
+            roadmap_data=roadmap_json["roadmap_data"],
+            company=roadmap_json.get("company"),
+            user_input=user_input.model_dump()
+        )
+
         print(roadmap_json)
         return roadmap_json
     except Exception as e:

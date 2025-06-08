@@ -81,7 +81,7 @@ The frontend will be available at `http://localhost:3000`
 - FastAPI
 - CrewAI
 - Supabase
-- OpenAI
+- Gemini API
 
 ### Frontend
 - Next.js 14

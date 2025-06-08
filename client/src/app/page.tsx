@@ -1,32 +1,35 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Lightbulb, ListChecks, LineChart } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Lightbulb, ListChecks, LineChart } from "lucide-react";
 import { Marquee } from "@/components/magicui/marquee";
-import Image from 'next/image';
-import Link from 'next/link';
-import { cn } from "@/utils/supabase/utils"
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const testimonials = [
     {
-      quote: 'AlgoAce helped me land a job at Google. The structured roadmap and practice problems are gold.',
-      name: 'Anjali R., Software Engineer',
+      quote:
+        "AlgoAce helped me land a job at Google. The structured roadmap and practice problems are gold.",
+      name: "Anjali R., Software Engineer",
     },
     {
-      quote: 'Best platform I’ve used for DSA prep. Clean UI and practical features.',
-      name: 'Rohit K., Final Year CS Student',
+      quote:
+        "Best platform I’ve used for DSA prep. Clean UI and practical features.",
+      name: "Rohit K., Final Year CS Student",
     },
     {
-      quote: 'I love the progress tracker and weekly updates. Keeps me motivated.',
-      name: 'Priya S., Aspiring SDE',
+      quote:
+        "I love the progress tracker and weekly updates. Keeps me motivated.",
+      name: "Priya S., Aspiring SDE",
     },
     {
-      quote: 'AlgoAce’s roadmap made everything less overwhelming. Super helpful for interview prep.',
-      name: 'Nikhil T., Backend Developer',
+      quote:
+        "AlgoAce’s roadmap made everything less overwhelming. Super helpful for interview prep.",
+      name: "Nikhil T., Backend Developer",
     },
   ];
-  
+
   const reviews = [
     {
       name: "Rohit K",
@@ -87,11 +90,17 @@ export default function Home() {
           // light styles
           "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
           // dark styles
-          "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]",
+          "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]"
         )}
       >
         <div className="flex flex-row items-center gap-2">
-          <img className="rounded-full" width="32" height="32" alt="" src={img} />
+          <img
+            className="rounded-full"
+            width="32"
+            height="32"
+            alt=""
+            src={img}
+          />
           <div className="flex flex-col">
             <figcaption className="text-sm font-medium dark:text-white">
               {name}
@@ -107,20 +116,12 @@ export default function Home() {
   const [current, setCurrent] = useState(0);
   const [showCoach, setShowCoach] = useState(false);
   const [chatHistory, setChatHistory] = useState([
-    { role: 'bot', content: "Hey there! I'm AlgoBuddy 🤖. Need help with anything?" },
+    {
+      role: "bot",
+      content: "Hey there! I'm AlgoBuddy 🤖. Need help with anything?",
+    },
   ]);
-  const [userInput, setUserInput] = useState('');
-
-  // New: Help categories quick suggestions
-  const helpCategories = [
-    'Binary Search',
-    'Recursion',
-    'Dynamic Programming',
-    'Linked List',
-    'Time Complexity',
-    'Graph',
-    'Stack',
-  ];
+  const [userInput, setUserInput] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -153,20 +154,15 @@ export default function Home() {
   const handleSend = () => {
     if (!userInput.trim()) return;
 
-    const userMessage = { role: 'user', content: userInput };
-    const botMessage = { role: 'bot', content: getBotReply(userInput) };
+    const userMessage = { role: "user", content: userInput };
+    const botMessage = {
+      role: "bot",
+      content:
+        "That's a great question! Try breaking the problem into parts and solving step by step.",
+    };
 
     setChatHistory((prev) => [...prev, userMessage, botMessage]);
-    setUserInput('');
-  };
-
-  // Handle clicking a help category button
-  const handleCategoryClick = (category: string) => {
-    const userMessage = { role: 'user', content: category };
-    const botMessage = { role: 'bot', content: getBotReply(category) };
-
-    setChatHistory((prev) => [...prev, userMessage, botMessage]);
-    setShowCoach(true); // open chat if closed
+    setUserInput("");
   };
 
   return (
@@ -174,9 +170,12 @@ export default function Home() {
       {/* Header with Top-Right Additions */}
       <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome to AlgoAce</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome to AlgoAce
+          </h1>
           <p className="text-muted-foreground">
-            Your comprehensive platform for Data Structures and Algorithms preparation
+            Your comprehensive platform for Data Structures and Algorithms
+            preparation
           </p>
         </div>
 
@@ -247,43 +246,51 @@ export default function Home() {
           </div>
         ))}
       </div>*/}
-
-      <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
-        <Marquee pauseOnHover className="[--duration:20s]">
-          {firstRow.map((review) => (
-            <ReviewCard key={review.username} {...review} />
-          ))}
-        </Marquee>
-        <Marquee reverse pauseOnHover className="[--duration:20s]">
-          {secondRow.map((review) => (
-            <ReviewCard key={review.username} {...review} />
-          ))}
-        </Marquee>
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
+      <div className="m-0 ">
+        <h2 className="text-xl font-semibold mb-4 align-start">
+          What Our Users Say
+        </h2>
+        <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
+          <Marquee pauseOnHover className="[--duration:20s]">
+            {firstRow.map((review) => (
+              <ReviewCard key={review.username} {...review} />
+            ))}
+          </Marquee>
+          <Marquee reverse pauseOnHover className="[--duration:20s]">
+            {secondRow.map((review) => (
+              <ReviewCard key={review.username} {...review} />
+            ))}
+          </Marquee>
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
+        </div>
       </div>
-
 
       {/* FAQ Section */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Frequently Asked Questions
+        </h2>
         <div className="space-y-4">
           <div>
             <h4 className="font-medium">Is AlgoAce free to use?</h4>
             <p className="text-sm text-muted-foreground">
-              Yes! Core features like the roadmap, practice problems, and tracking are free for all users.
+              Yes! Core features like the roadmap, practice problems, and
+              tracking are free for all users.
             </p>
           </div>
           <div>
             <h4 className="font-medium">Do I need an account?</h4>
             <p className="text-sm text-muted-foreground">
-              You can browse content without an account, but you'll need one to save progress or compete in contests.
+              You can browse content without an account, but you'll need one to
+              save progress or compete in contests.
             </p>
           </div>
           <div>
             <h4 className="font-medium">How often is content updated?</h4>
             <p className="text-sm text-muted-foreground">
-              We update weekly with new problems, tutorials, and roadmap improvements.
+              We update weekly with new problems, tutorials, and roadmap
+              improvements.
             </p>
           </div>
         </div>
@@ -311,31 +318,24 @@ export default function Home() {
         <div className="fixed bottom-24 right-4 w-80 bg-white border border-gray-200 shadow-lg rounded-lg flex flex-col z-50">
           <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-t-lg flex justify-between items-center">
             <span>🤖 AlgoBuddy</span>
-            <button onClick={() => setShowCoach(false)} className="text-white text-xs">✕</button>
+            <button
+              onClick={() => setShowCoach(false)}
+              className="text-white text-xs"
+            >
+              ✕
+            </button>
           </div>
-
-          {/* Quick Help Categories */}
-          <div className="flex gap-2 flex-wrap p-2 border-b overflow-x-auto">
-            {helpCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => handleCategoryClick(category)}
-                className="bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs px-3 py-1 rounded-full whitespace-nowrap"
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          {/* Chat Messages */}
           <div className="p-4 h-60 overflow-y-auto text-sm space-y-2">
             {chatHistory.map((msg, index) => (
-              <div key={index} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
+              <div
+                key={index}
+                className={msg.role === "user" ? "text-right" : "text-left"}
+              >
                 <div
                   className={`inline-block px-3 py-2 rounded-lg ${
-                    msg.role === 'user'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-gray-100 text-gray-800'
+                    msg.role === "user"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
                   {msg.content}
@@ -350,8 +350,8 @@ export default function Home() {
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 px-3 py-2 text-black text-sm border rounded-md border-blue-400 placeholder-gray-500"
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-gray-500"
               placeholder="Ask me something..."
             />
             <button
@@ -369,9 +369,15 @@ export default function Home() {
         <div className="max-w-screen-xl mx-auto text-center">
           <p className="text-s">© 2025 AlgoAce. All rights reserved.</p>
           <div className="flex justify-center gap-6 mt-4 text-xs">
-            <a href="#" className="hover:text-primary">Privacy Policy</a>
-            <a href="#" className="hover:text-primary">Terms of Service</a>
-            <a href="#" className="hover:text-primary">Contact Us</a>
+            <a href="#" className="hover:text-primary">
+              Privacy Policy
+            </a>
+            <a href="#" className="hover:text-primary">
+              Terms of Service
+            </a>
+            <a href="#" className="hover:text-primary">
+              Contact Us
+            </a>
           </div>
         </div>
       </footer>
