@@ -28,13 +28,13 @@ export function HelpModal({ problemId, problemTitle }: HelpModalProps) {
     setIsLoading(true);
     try {
       // Call the explanation agent API
-      const response = await fetch('/api/problems/explain', {
+      const response = await fetch('http://localhost:8000/api/problems/explanation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          problemId,
+          problem_id: problemId,
           question,
         }),
       });

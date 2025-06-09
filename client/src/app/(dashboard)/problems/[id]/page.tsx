@@ -35,6 +35,18 @@ interface ProblemDetail {
   url: string
 }
 
+interface Explanation {
+  problem_understanding: string
+  approaches: {
+    approach: string
+    time_complexity: string
+    space_complexity: string
+  }[]
+  example_walkthrough: string
+  edge_cases: string
+  tips: string
+}
+
 interface PageProps {
   params: Promise<{ id: string }>
 }
@@ -45,6 +57,8 @@ export default function ProblemDetailPage({ params }: PageProps) {
   const [isCompleted, setIsCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
+  const [explanation, setExplanation] = useState<Explanation | null>(null)
+  const [explanationLoading, setExplanationLoading] = useState(false)
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -85,6 +99,45 @@ export default function ProblemDetailPage({ params }: PageProps) {
     }
     fetchProblem()
   }, [resolvedParams.id])
+
+  const fetchExplanation = async () => {
+    if (!problem) {
+      console.error("No problem data available")
+      return
+    }
+    console.log("Problem data:", {
+      id: problem.id,
+      title: problem.title,
+      type: typeof problem.id
+    })
+    setExplanationLoading(true)
+    try {
+      // Ensure problem.id is a string for the URL
+      const problemId = String(problem.id)
+      const url = `http://localhost:8000/api/problems/explain?problem_id=${encodeURIComponent(problemId)}`
+      console.log("Making request to:", url)
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Error response:", errorText)
+        throw new Error(`Failed to fetch explanation: ${errorText}`)
+      }
+      const data = await response.json()
+      console.log("Received explanation data:", data)
+      setExplanation(data.explanation)
+    } catch (error) {
+      console.error("Error in fetchExplanation:", error)
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error fetching explanation', { description: errorMessage })
+    } finally {
+      setExplanationLoading(false)
+    }
+  }
 
   if (loading) return <div className="p-6 text-center">Loading...</div>
   if (!problem) return <div className="p-6 text-center">Problem not found</div>
@@ -134,6 +187,7 @@ export default function ProblemDetailPage({ params }: PageProps) {
           <TabsTrigger value="description">Description</TabsTrigger>
           <TabsTrigger value="solution">Solution</TabsTrigger>
           <TabsTrigger value="discussion">Discussion</TabsTrigger>
+          <TabsTrigger value="explanation">Explanation</TabsTrigger>
         </TabsList>
         <TabsContent value="description" className="space-y-4">
       <Card>
@@ -195,6 +249,76 @@ export default function ProblemDetailPage({ params }: PageProps) {
               <div className="h-[400px] bg-muted rounded-lg flex items-center justify-center">
                 Discussion Placeholder
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="explanation">
+          <Card>
+            <CardHeader>
+              <CardTitle>Problem Explanation</CardTitle>
+              <CardDescription>Get a detailed explanation of the problem and its solution</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!explanation && !explanationLoading && (
+                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                  <p className="text-muted-foreground">Click the button below to get a detailed explanation</p>
+                  <Button 
+                    onClick={fetchExplanation}
+                    disabled={explanationLoading}
+                  >
+                    {explanationLoading ? 'Generating Explanation...' : 'Get Explanation'}
+                  </Button>
+                </div>
+              )}
+              {explanationLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              )}
+              {explanation && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Problem Understanding</h3>
+                    <p className="text-muted-foreground">{explanation.problem_understanding || 'No problem understanding provided.'}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Approaches</h3>
+                    <div className="space-y-4">
+                      {Array.isArray(explanation.approaches) ? (
+                        explanation.approaches.map((approach, index) => (
+                          <div key={index} className="bg-muted p-4 rounded-lg">
+                            <p className="font-medium mb-2">{approach.approach || 'Approach'}</p>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium">Time Complexity:</span>
+                                <p className="text-muted-foreground">{approach.time_complexity || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Space Complexity:</span>
+                                <p className="text-muted-foreground">{approach.space_complexity || 'Not specified'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-muted-foreground">No approaches provided.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Example Walkthrough</h3>
+                    <p className="text-muted-foreground">{explanation.example_walkthrough || 'No example walkthrough provided.'}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Edge Cases</h3>
+                    <p className="text-muted-foreground">{explanation.edge_cases || 'No edge cases provided.'}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Tips</h3>
+                    <p className="text-muted-foreground">{explanation.tips || 'No tips provided.'}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
