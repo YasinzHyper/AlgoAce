@@ -103,9 +103,14 @@ const RoadmapCard = ({ roadmap, onDelete }: { roadmap: any, onDelete: (id: numbe
         <p>Weeks: {weeks}</p>
         {company && <p>Company: {company}</p>}
         <div className="mt-4 flex justify-between">
-          <Link href={`/roadmap/${roadmap.id}`}>
-            <Button variant="outline" className='cursor-pointer'>View</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/roadmap/${roadmap.id}`}>
+              <Button variant="outline" className='cursor-pointer'>View</Button>
+            </Link>
+            <Link href={`/problems?roadmap=${roadmap.id}`}>
+              <Button variant="secondary" className='cursor-pointer'>Problems</Button>
+            </Link>
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className='cursor-pointer'>Delete</Button>
