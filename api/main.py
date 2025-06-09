@@ -3,10 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.crew import DSACrew
 from supabase_client import supabase
-from routers import roadmap_router, user_router, problem_router
-import pandas as pd
-from typing import List, Optional
-import json
+from routers import roadmap_router, user_router, problem_router, progress_router
 
 app = FastAPI()
 
@@ -21,25 +18,7 @@ app.add_middleware(
 app.include_router(roadmap_router.router, prefix="/api/roadmap")
 app.include_router(user_router.router, prefix="/api/user")
 app.include_router(problem_router.router, prefix="/api/problems")
-
-crew = DSACrew()
-
-# Load the problems dataset
-problems_df = pd.read_csv('dataset/leetcode-problems.csv')
-
-class RoadmapRequest(BaseModel):
-    goal: str
-    weeks: int
-    weekly_hours: int
-    current_knowledge: dict
-
-@app.post("/roadmap")
-async def create_roadmap(request: RoadmapRequest, user_id: str):
-    try:
-        result = crew.create_roadmap(request.dict(), user_id)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(progress_router.router, prefix="/api/progress")
 
 # dsa_crew = DSACrew()
 

@@ -81,7 +81,8 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
             roadmap_id=roadmap_id,
             roadmap_data=roadmap_json["roadmap_data"],
             company=roadmap_json.get("company"),
-            user_input=user_input.model_dump()
+            user_input=user_input.model_dump(),
+            user_id=user.user.id
         )
 
         print(roadmap_json)

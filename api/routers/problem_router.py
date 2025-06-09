@@ -286,7 +286,8 @@ async def recommend_problems(roadmap_id: int, user=Depends(get_current_user)):
             roadmap_id=roadmap_id,
             roadmap_data=roadmap["roadmap_data"],
             company=roadmap.get("company"),
-            user_input={}  # Add any additional user input if needed
+            user_input={},  # Add any additional user input if needed
+            user_id=user.user.id
         )
         
         # Return the recommendations
