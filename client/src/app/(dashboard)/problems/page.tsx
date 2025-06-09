@@ -76,7 +76,7 @@ export default function ProblemsPage() {
         // Check for roadmap ID in URL
         const roadmapId = searchParams.get('roadmap')
         if (roadmapId) {
-          const roadmap = roadmaps.find(r => r.id === parseInt(roadmapId))
+          const roadmap = roadmaps.find((r: Roadmap) => r.id === parseInt(roadmapId))
           if (roadmap) {
             setSelectedRoadmap(roadmap)
           }
