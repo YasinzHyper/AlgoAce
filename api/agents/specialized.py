@@ -89,11 +89,22 @@ class ProblemRecommenderAgent(Agent):
             role="Problem Selection Specialist",
             llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17",api_key=GEMINI_API_KEY),
             goal="Recommend relevant DSA problems based on the user's weekly topics, difficulty, and company tags.",
-            backstory="You’re an expert in curating coding problems tailored to learning goals.",
+            backstory="You're an expert in curating coding problems tailored to learning goals.",
             tools=[csv_tool],
             verbose=True
         )
 
+class ExplanationAgent(Agent):
+    def __init__(self):
+        super().__init__(
+            name="Problem Explainer",
+            role="DSA Problem Explanation Specialist",
+            llm=LLM(model="gemini/gemini-2.5-flash-preview-04-17", api_key=GEMINI_API_KEY),
+            goal="Provide clear, detailed explanations of DSA problems, including approaches, time complexity, and space complexity.",
+            backstory="Expert in breaking down complex DSA problems into understandable concepts with clear explanations and examples.",
+            tools=[csv_tool],
+            verbose=True
+        )
 
 # class FeedbackAgent(Agent):
 #     def __init__(self):

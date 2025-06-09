@@ -55,7 +55,7 @@
 #         {json_output_example}
 
 #         Note: 
-#         - The company field can be empty if the user did not mention any company name in the "Goal" field, and if they mention more than one company then separate them by commas and include them into the "company" field (e.g, "google, facebook, netflix).
+#         - The company field can be empty if the user did not mention any company name in the "Goal" field, and if they mention more than one company then separate them by commas and include them into the "company" field (e.g, "google, facebook, netflix").
 #         - The example is not exhaustive, and it is only provided for the structure of the JSON response. (the number of weeks, number of topics, etc. can vary based on the user input) 
 #         - Ensure the response is a valid JSON array in this exact format without any extra markdown formatting (return it in plaintext format).
 #         """
@@ -113,7 +113,7 @@
 #     #     return self.crew.kickoff({"problem_id": problem_id})
 
 from crewai import Crew, Task
-from .specialized import RoadmapAgent, ProblemRecommenderAgent
+from .specialized import RoadmapAgent, ProblemRecommenderAgent, ExplanationAgent
 from supabase_client import supabase
 import json
 
@@ -121,13 +121,15 @@ class DSACrew:
     def __init__(self):
         self.roadmap_agent = RoadmapAgent()
         self.recommender_agent = ProblemRecommenderAgent()
+        self.explanation_agent = ExplanationAgent()
         
         self.crew = Crew(
             agents=[
                 self.roadmap_agent,
                 self.recommender_agent,
+                self.explanation_agent,
             ],
-            tasks=[],  # We'll add tasks dynamically
+            tasks=[],
             verbose=True
         )
     
@@ -229,3 +231,47 @@ class DSACrew:
             return save_to_db(result)
         except Exception as e:
             raise Exception(f"Error processing roadmap result: {str(e)}")
+
+    def get_explanation(self, problem_id: str, problem_details: dict):
+        """
+        Get a detailed explanation for a specific problem
+        """
+        explanation_prompt = f"""
+        Please provide a detailed explanation for the following DSA problem:
+
+        Title: {problem_details.get('title', '')}
+        Description: {problem_details.get('description', '')}
+        Difficulty: {problem_details.get('difficulty', '')}
+        Topics: {', '.join(problem_details.get('related_topics', []))}
+
+        Please structure your explanation to include:
+        1. Problem Understanding
+        2. Approach(es) to solve the problem
+        3. Time Complexity Analysis
+        4. Space Complexity Analysis
+        5. Example walkthrough
+        6. Edge cases to consider
+
+        Make the explanation clear and beginner-friendly while maintaining technical accuracy.
+        """
+
+        explanation_task = Task(
+            description=explanation_prompt,
+            expected_output="A structured explanation of the problem with all the requested sections.",
+            agent=self.explanation_agent,
+            context=[{
+                "description": explanation_prompt,
+                "expected_output": "A detailed explanation of the problem"
+            }]
+        )
+
+        # Create a new crew instance with the task
+        crew = Crew(
+            agents=[self.explanation_agent],
+            tasks=[explanation_task],
+            verbose=True
+        )
+
+        # Execute the crew and get the result
+        result = crew.kickoff()
+        return result
