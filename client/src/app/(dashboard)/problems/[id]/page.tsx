@@ -279,7 +279,25 @@ export default function ProblemDetailPage({ params }: PageProps) {
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Problem Understanding</h3>
-                    <p className="text-muted-foreground">{explanation.problem_understanding || 'No problem understanding provided.'}</p>
+                    <div className="prose prose-sm max-w-none">
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: explanation.problem_understanding
+                          .split('\n')
+                          .map(line => {
+                            if (line.startsWith('###')) {
+                              return `<h3 class="text-lg font-semibold mt-4 mb-2">${line.replace('###', '').trim()}</h3>`;
+                            } else if (line.startsWith('- ')) {
+                              return `<li class="ml-4">${line.replace('- ', '').trim()}</li>`;
+                            } else if (line.match(/^\d+\./)) {
+                              return `<li class="ml-4">${line.trim()}</li>`;
+                            } else if (line.trim()) {
+                              return `<p class="my-2">${line.trim()}</p>`;
+                            }
+                            return '';
+                          })
+                          .join('')
+                      }} />
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Approaches</h3>
@@ -287,8 +305,26 @@ export default function ProblemDetailPage({ params }: PageProps) {
                       {Array.isArray(explanation.approaches) ? (
                         explanation.approaches.map((approach, index) => (
                           <div key={index} className="bg-muted p-4 rounded-lg">
-                            <p className="font-medium mb-2">{approach.approach || 'Approach'}</p>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="prose prose-sm max-w-none">
+                              <div dangerouslySetInnerHTML={{ 
+                                __html: approach.approach
+                                  .split('\n')
+                                  .map(line => {
+                                    if (line.startsWith('###')) {
+                                      return `<h4 class="text-md font-semibold mt-3 mb-2">${line.replace('###', '').trim()}</h4>`;
+                                    } else if (line.startsWith('- ')) {
+                                      return `<li class="ml-4">${line.replace('- ', '').trim()}</li>`;
+                                    } else if (line.match(/^\d+\./)) {
+                                      return `<li class="ml-4">${line.trim()}</li>`;
+                                    } else if (line.trim()) {
+                                      return `<p class="my-2">${line.trim()}</p>`;
+                                    }
+                                    return '';
+                                  })
+                                  .join('')
+                              }} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
                               <div>
                                 <span className="font-medium">Time Complexity:</span>
                                 <p className="text-muted-foreground">{approach.time_complexity || 'Not specified'}</p>
@@ -307,15 +343,61 @@ export default function ProblemDetailPage({ params }: PageProps) {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Example Walkthrough</h3>
-                    <p className="text-muted-foreground">{explanation.example_walkthrough || 'No example walkthrough provided.'}</p>
+                    <div className="prose prose-sm max-w-none">
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: explanation.example_walkthrough
+                          .split('\n')
+                          .map(line => {
+                            if (line.startsWith('###')) {
+                              return `<h4 class="text-md font-semibold mt-3 mb-2">${line.replace('###', '').trim()}</h4>`;
+                            } else if (line.startsWith('- ')) {
+                              return `<li class="ml-4">${line.replace('- ', '').trim()}</li>`;
+                            } else if (line.match(/^\d+\./)) {
+                              return `<li class="ml-4">${line.trim()}</li>`;
+                            } else if (line.trim()) {
+                              return `<p class="my-2">${line.trim()}</p>`;
+                            }
+                            return '';
+                          })
+                          .join('')
+                      }} />
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Edge Cases</h3>
-                    <p className="text-muted-foreground">{explanation.edge_cases || 'No edge cases provided.'}</p>
+                    <div className="prose prose-sm max-w-none">
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: explanation.edge_cases
+                          .split('\n')
+                          .map(line => {
+                            if (line.startsWith('- ')) {
+                              return `<li class="ml-4">${line.replace('- ', '').trim()}</li>`;
+                            } else if (line.trim()) {
+                              return `<p class="my-2">${line.trim()}</p>`;
+                            }
+                            return '';
+                          })
+                          .join('')
+                      }} />
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold mb-2">Tips</h3>
-                    <p className="text-muted-foreground">{explanation.tips || 'No tips provided.'}</p>
+                    <div className="prose prose-sm max-w-none">
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: explanation.tips
+                          .split('\n')
+                          .map(line => {
+                            if (line.startsWith('- ')) {
+                              return `<li class="ml-4">${line.replace('- ', '').trim()}</li>`;
+                            } else if (line.trim()) {
+                              return `<p class="my-2">${line.trim()}</p>`;
+                            }
+                            return '';
+                          })
+                          .join('')
+                      }} />
+                    </div>
                   </div>
                 </div>
               )}
