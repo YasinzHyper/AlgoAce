@@ -5,6 +5,7 @@ import { Lightbulb, ListChecks, LineChart } from "lucide-react";
 import { Marquee } from "@/components/magicui/marquee";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/utils/supabase/client";
 
 export default function Home() {
   const testimonials = [
@@ -122,6 +123,7 @@ export default function Home() {
     },
   ]);
   const [userInput, setUserInput] = useState("");
+  const [randomProblem, setRandomProblem] = useState<any | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -144,6 +146,29 @@ export default function Home() {
     setUserInput("");
   };
 
+  const handleRandomProblem = async () => {
+    try {
+      // Fetch the dataset directly from the static JSON file
+      const response = await fetch("/leetcode-problems-dataset.json");
+      if (!response.ok) throw new Error("Failed to fetch problems dataset");
+      const problems = await response.json();
+      // Filter for easy problems
+      const easyProblems = problems.filter(
+        (p: any) =>
+          (p.difficulty?.toLowerCase?.() === "easy") ||
+          (p.difficulty === "Easy")
+      );
+      if (!Array.isArray(easyProblems) || easyProblems.length === 0)
+        throw new Error("No easy problems found");
+
+      // Pick a random easy problem
+      const random = easyProblems[Math.floor(Math.random() * easyProblems.length)];
+      setRandomProblem(random);
+    } catch (error: any) {
+      alert(error.message || "Failed to fetch random problem");
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
@@ -162,7 +187,10 @@ export default function Home() {
           <div className="flex items-center gap-1 text-sm text-orange-500 font-medium">
             🔥 <span>5-day streak</span>
           </div>
-          <button className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition">
+          <button
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
+            onClick={handleRandomProblem}
+          >
             🎲 Random Problem
           </button>
           <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -329,6 +357,42 @@ export default function Home() {
               Send
             </button>
           </div>
+        </div>
+      )}
+
+      {randomProblem && (
+        <div className="fixed top-24 right-4 z-50 bg-white border border-gray-300 shadow-lg rounded-lg p-6 max-w-md w-full">
+          <h2 className="text-xl font-bold mb-2">{randomProblem.title}</h2>
+          <div className="mb-2 text-xs text-gray-500 flex gap-2">
+            <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">{randomProblem.difficulty}</span>
+            {randomProblem.related_topics && Array.isArray(randomProblem.related_topics)
+              ? randomProblem.related_topics.map((t: string) => (
+                  <span key={t} className="px-2 py-1 rounded bg-gray-100 text-gray-700">{t}</span>
+                ))
+              : null}
+          </div>
+          <div className="mb-2 max-h-60 overflow-y-auto whitespace-pre-line text-sm text-gray-700">
+            {/* Try to split description into paragraphs for readability */}
+            {randomProblem.description
+              ? randomProblem.description
+                  .split(/\n{2,}/)
+                  .map((para: string, idx: number) => (
+                    <p key={idx} className="mb-2">{para.trim()}</p>
+                  ))
+              : "No description available."}
+          </div>
+          <a
+            href={`/problems/${randomProblem.id}`}
+            className="text-blue-600 underline text-sm"
+          >
+            Go to Problem
+          </a>
+          <button
+            className="ml-4 text-xs text-gray-500 hover:text-gray-800"
+            onClick={() => setRandomProblem(null)}
+          >
+            Close
+          </button>
         </div>
       )}
 
