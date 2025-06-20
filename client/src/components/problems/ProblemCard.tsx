@@ -89,7 +89,7 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {displayedTopics.map(topic => (
-                <Badge key={topic} variant="outline" className="bg-white/50 text-black border-blue-200 hover:bg-blue-50 transition-colors">{topic}</Badge>
+                <Badge key={topic} variant="outline" className="bg-white/50 border-blue-200 hover:bg-blue-50 transition-colors" style={{ color: 'black' }}>{topic}</Badge>
               ))}
               {moreTopicsCount > 0 && (
                 <Badge variant="outline" className="bg-white/50 text-black border-blue-200 hover:bg-blue-50 transition-colors">+{moreTopicsCount} more</Badge>
