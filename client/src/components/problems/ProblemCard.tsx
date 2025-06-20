@@ -92,7 +92,7 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
                 <Badge key={topic} variant="outline" className="bg-white/50 border-blue-200 hover:bg-blue-50 transition-colors" style={{ color: 'black' }}>{topic}</Badge>
               ))}
               {moreTopicsCount > 0 && (
-                <Badge variant="outline" className="bg-white/50 text-black border-blue-200 hover:bg-blue-50 transition-colors">+{moreTopicsCount} more</Badge>
+                <Badge variant="outline" className="bg-white/50 border-blue-200 hover:bg-blue-50 transition-colors" style={{ color: 'black' }}>+{moreTopicsCount} more</Badge>
               )}
             </div>
           </div>
@@ -106,10 +106,10 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {displayedCompanies.map(company => (
-                <Badge key={company} variant="secondary" className="bg-white/50 text-black border-purple-200 hover:bg-purple-50 transition-colors">{company}</Badge>
+                <Badge key={company} variant="secondary" className="bg-white/50 border-purple-200 hover:bg-purple-50 transition-colors" style={{ color: 'black' }}>{company}</Badge>
               ))}
               {moreCompaniesCount > 0 && (
-                <Badge variant="secondary" className="bg-white/50 text-black border-purple-200 hover:bg-purple-50 transition-colors">+{moreCompaniesCount} more</Badge>
+                <Badge variant="secondary" className="bg-white/50 border-purple-200 hover:bg-purple-50 transition-colors" style={{ color: 'black' }}>+{moreCompaniesCount} more</Badge>
               )}
             </div>
           </div>

@@ -125,6 +125,55 @@ export default function Home() {
   ]);
   const [userInput, setUserInput] = useState("");
   const [randomProblem, setRandomProblem] = useState<any | null>(null);
+  // Utility to get today in YYYY-MM-DD
+  const getToday = () => new Date().toISOString().slice(0, 10);
+
+  // Utility to check if two dates are consecutive
+  const isConsecutive = (date1: string, date2: string) => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate() + 1
+    );
+  };
+
+  // Get streak from localStorage
+  const getStreak = (): number => {
+    if (typeof window === 'undefined') return 1;
+    const data = localStorage.getItem('algoace-activity-dates');
+    if (!data) return 1;
+    const dates = JSON.parse(data) as string[];
+    if (!dates.length) return 1;
+    // Sort descending
+    dates.sort((a, b) => b.localeCompare(a));
+    let streak = 1;
+    let prev = dates[0];
+    for (let i = 1; i < dates.length; i++) {
+      if (isConsecutive(prev, dates[i])) {
+        streak++;
+        prev = dates[i];
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  // On mount, update activity dates
+  const [streak, setStreak] = useState(1);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const today = getToday();
+    let data = localStorage.getItem('algoace-activity-dates');
+    let dates: string[] = data ? JSON.parse(data) : [];
+    if (!dates.includes(today)) {
+      dates.push(today);
+      localStorage.setItem('algoace-activity-dates', JSON.stringify(dates));
+    }
+    setStreak(getStreak());
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -160,8 +209,7 @@ export default function Home() {
     const userMessage = { role: "user", content: userInput };
     const botMessage = {
       role: "bot",
-      content:
-        "That's a great question! Try breaking the problem into parts and solving step by step.",
+      content: getBotReply(userInput),
     };
 
     setChatHistory((prev) => [...prev, userMessage, botMessage]);
@@ -207,7 +255,7 @@ export default function Home() {
 
         <div className="flex items-center gap-4 ml-auto mt-2">
           <div className="flex items-center gap-1 text-sm text-orange-500 font-medium">
-            🔥 <span>5-day streak</span>
+            🔥 <span>{streak}-day streak</span>
           </div>
           <button
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
@@ -395,7 +443,7 @@ export default function Home() {
 
       {randomProblem && (
         <div className="fixed top-24 right-4 z-50 bg-white border border-gray-300 shadow-lg rounded-lg p-6 max-w-md w-full">
-          <h2 className="text-xl font-bold mb-2">{randomProblem.title}</h2>
+          <h2 className="text-xl font-bold mb-2 text-black">{randomProblem.title}</h2>
           <div className="mb-2 text-xs text-gray-500 flex gap-2">
             <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">{randomProblem.difficulty}</span>
             {randomProblem.related_topics && Array.isArray(randomProblem.related_topics)
