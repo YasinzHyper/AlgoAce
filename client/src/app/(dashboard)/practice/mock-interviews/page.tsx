@@ -55,8 +55,14 @@ export default function MockInterviewsPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('intermediate');
   const [timer, setTimer] = useState(0);
   const [alertShown, setAlertShown] = useState(false);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Add timer options
+  const timerOptions = [30, 45, 60]; // in minutes
+  const [customMinutes, setCustomMinutes] = useState('');
 
   // Handle shake detection alert
   const handleShake = () => {
@@ -69,11 +75,21 @@ export default function MockInterviewsPage() {
 
   // Start Timer Function
   const startTimer = () => {
-    setTimer(45 * 60); // 45 minutes
+    // If customMinutes is set, use that, else use timer
+    let seconds = timer;
+    if (customMinutes) {
+      seconds = parseInt(customMinutes, 10) * 60;
+    }
+    if (!seconds || isNaN(seconds)) {
+      seconds = 45 * 60;
+    }
+    setTimer(seconds);
+    setTimerActive(true);
     const interval = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 0) {
           clearInterval(interval);
+          setTimerActive(false);
           return 0;
         }
         return prev - 1;
@@ -81,11 +97,47 @@ export default function MockInterviewsPage() {
     }, 1000);
   };
 
+  // Pause Timer Function
+  const pauseTimer = () => {
+    setTimerActive(false);
+  };
+
+  // Reset Timer Function
+  const resetTimer = () => {
+    setTimer(0);
+    setTimerActive(false);
+  };
+
+  // Timer selection handler
+  const handleTimerSelect = (minutes: number) => {
+    setTimer(minutes * 60);
+    setCustomMinutes('');
+    setTimerActive(false);
+  };
+
+  // Custom input handler
+  const handleCustomInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9]/g, '');
+    setCustomMinutes(val);
+    if (val) {
+      setTimer(parseInt(val, 10) * 60);
+      setTimerActive(false);
+    }
+  };
+
   // Camera Setup
   useEffect(() => {
+    let stream: MediaStream | null = null;
     const getCamera = async () => {
+      if (!cameraOn) {
+        if (videoRef.current && videoRef.current.srcObject) {
+          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
+        }
+        return;
+      }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -93,12 +145,19 @@ export default function MockInterviewsPage() {
         console.error('Camera access denied', err);
       }
     };
-
     getCamera();
-  }, []);
+    return () => {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    };
+  }, [cameraOn]);
 
   // Use Shake Detection
   useShakeDetector(videoRef, handleShake);
+
+  // Handle Camera Toggle
+  const handleCameraToggle = () => {
+    setCameraOn((prev) => !prev);
+  };
 
   return (
     <div className="space-y-6">
@@ -111,35 +170,70 @@ export default function MockInterviewsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <label htmlFor="interview-type" className="block text-sm font-medium">Interview Type</label>
-              <select
-                id="interview-type"
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white"
-              >
-                <option value="technical">Technical</option>
-                <option value="behavioral">Behavioral</option>
-                <option value="system-design">System Design</option>
-              </select>
+            <div className="flex flex-col gap-4 md:flex-row md:gap-8">
+              <div className="flex-1">
+                <label htmlFor="interview-type" className="block text-sm font-medium mb-2">Interview Type</label>
+                <select
+                  id="interview-type"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
+                >
+                  <option value="technical">Technical</option>
+                  <option value="behavioral">Behavioral</option>
+                  <option value="system-design">System Design</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label htmlFor="difficulty-level" className="block text-sm font-medium mb-2">Difficulty Level</label>
+                <select
+                  id="difficulty-level"
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="difficulty-level" className="block text-sm font-medium">Difficulty Level</label>
-              <select
-                id="difficulty-level"
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white"
-              >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
+            {/* Timer quick select - fancier UI */}
+            <div className="flex flex-wrap gap-2 mb-2 items-center">
+              {timerOptions.map((min) => (
+                <Button
+                  key={min}
+                  variant={timer === min * 60 ? 'default' : 'outline'}
+                  onClick={() => handleTimerSelect(min)}
+                  className={`rounded-full px-6 py-2 font-semibold transition-all duration-150 ${timer === min * 60 ? 'ring-2 ring-indigo-400' : ''}`}
+                >
+                  {min} min
+                </Button>
+              ))}
+              <div className="relative">
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Custom"
+                  value={customMinutes}
+                  onChange={handleCustomInput}
+                  className="w-24 px-3 py-2 rounded-full border border-gray-300 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center appearance-none"
+                  style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">min</span>
+              </div>
             </div>
-            <Button variant="outline" onClick={startTimer}>
-              Start Timer
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={startTimer} disabled={timer > 0 && timerActive || timer === 0}>
+                Start Timer
+              </Button>
+              <Button variant="outline" onClick={pauseTimer} disabled={!timerActive}>
+                Pause
+              </Button>
+              <Button variant="outline" onClick={resetTimer}>
+                Reset
+              </Button>
+            </div>
             <p className="text-lg font-bold">Time Remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</p>
             <Link href="/practice/mock-interviews/session">
               <Button variant="outline">Begin Interview</Button>
@@ -150,8 +244,11 @@ export default function MockInterviewsPage() {
 
       {/* Add Camera */}
       <div className="my-4">
-        <p className="text-sm text-gray-500 mb-2">Camera Active – Motion monitored</p>
-        <video ref={videoRef} autoPlay muted className="w-full max-w-md rounded-md border" />
+        <div className="flex items-center gap-2 mb-2">
+          <Button variant="outline" onClick={handleCameraToggle}>{cameraOn ? 'Turn Camera Off' : 'Turn Camera On'}</Button>
+          <span className="text-sm text-gray-500">Camera {cameraOn ? 'On' : 'Off'} – Motion monitored</span>
+        </div>
+        <video ref={videoRef} autoPlay muted className="w-full max-w-md rounded-md border" style={{ display: cameraOn ? 'block' : 'none' }} />
       </div>
 
       {/* Interview History */}
@@ -200,7 +297,7 @@ export default function MockInterviewsPage() {
           <CardDescription>Helpful resources for interview preparation</CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             <li><Link href="#" className="text-blue-500 hover:underline">Interview Tips</Link></li>
             <li><Link href="#" className="text-blue-500 hover:underline">Common Questions</Link></li>
             <li><Link href="#" className="text-blue-500 hover:underline">Practice Problems</Link></li>
