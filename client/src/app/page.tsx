@@ -316,6 +316,44 @@ export default function Home() {
     }
   };
 
+  // FAQ categories and questions
+  const faqCategories = [
+    'All',
+    'General',
+    'Accounts',
+    'Content',
+    'Features',
+    'Support',
+  ];
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const faqs = [
+    {
+      category: 'General',
+      question: 'Is AlgoAce free to use?',
+      answer: 'Yes! Core features like the roadmap, practice problems, and tracking are free for all users.'
+    },
+    {
+      category: 'Accounts',
+      question: 'Do I need an account?',
+      answer: 'You can browse content without an account, but you\'ll need one to save progress or compete in contests.'
+    },
+    {
+      category: 'Content',
+      question: 'How often is content updated?',
+      answer: 'We update weekly with new problems, tutorials, and roadmap improvements.'
+    },
+    {
+      category: 'Features',
+      question: 'What features are available for free?',
+      answer: 'Roadmap, practice problems, analytics, and tips are free. Some advanced features may require an account.'
+    },
+    {
+      category: 'Support',
+      question: 'How can I contact support?',
+      answer: 'Use the Contact Us link in the footer or email us at support@algoace.com.'
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
@@ -360,9 +398,9 @@ export default function Home() {
       {/* Features Section */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Link href="/roadmap" passHref>
-            <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+            <div className="rounded-lg border border-blue-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
               <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="text-blue-500" />
+                <Lightbulb className="text-blue-500 " />
                 <h3 className="text-lg font-semibold">Follow the Roadmap</h3>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -372,7 +410,7 @@ export default function Home() {
           </Link>
 
           <Link href="/problems" passHref>
-            <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+            <div className="rounded-lg border border-green-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
               <div className="flex items-center gap-2 mb-2">
                 <ListChecks className="text-green-500" />
                 <h3 className="text-lg font-semibold">Practice Problems</h3>
@@ -384,7 +422,7 @@ export default function Home() {
           </Link>
 
         <Link href="/analytics" passHref>
-          <div className="rounded-lg border bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
+          <div className="rounded-lg border border-purple-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <LineChart className="text-purple-500" />
               <h3 className="text-lg font-semibold">Track Your Progress</h3>
@@ -416,33 +454,30 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FAQ Section */}
+      {/* FAQ Section with Categories */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">
-          Frequently Asked Questions
-        </h2>
+        <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+        <div className="flex flex-wrap gap-4 mb-4">
+          {/* FAQ Categories */}
+          {faqCategories.map((cat, idx) => (
+            <button
+              key={cat}
+              className={`px-4 py-2 rounded-full text-sm font-medium border transition ${selectedCategory === cat ? 'bg-slate-700 text-white border-blue-400' : 'bg-slate-900 text-white-800 border-blue-400 hover:bg-blue-700'}`}
+              onClick={() => setSelectedCategory(cat)}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
         <div className="space-y-4">
-          <div>
-            <h4 className="font-medium">Is AlgoAce free to use?</h4>
-            <p className="text-sm text-muted-foreground">
-              Yes! Core features like the roadmap, practice problems, and
-              tracking are free for all users.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-medium">Do I need an account?</h4>
-            <p className="text-sm text-muted-foreground">
-              You can browse content without an account, but you'll need one to
-              save progress or compete in contests.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-medium">How often is content updated?</h4>
-            <p className="text-sm text-muted-foreground">
-              We update weekly with new problems, tutorials, and roadmap
-              improvements.
-            </p>
-          </div>
+          {faqs
+            .filter(faq => selectedCategory === 'All' || faq.category === selectedCategory)
+            .map((faq, idx) => (
+              <div key={idx}>
+                <h4 className="font-medium">{faq.question}</h4>
+                <p className="text-sm text-muted-foreground">{faq.answer}</p>
+              </div>
+            ))}
         </div>
       </div>
 
