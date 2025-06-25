@@ -275,6 +275,47 @@ export default function Home() {
     }
   ];
 
+  // DSA Tips and Interview Advice only
+  const tips = [
+    "Break down problems into smaller parts before coding.",
+    "Always analyze time and space complexity.",
+    "Practice writing pseudocode before implementation.",
+    "Draw diagrams for trees, graphs, and linked lists.",
+    "Test your code with edge cases.",
+    "Use meaningful variable names for clarity.",
+    "Review and refactor your code for readability.",
+    "Understand the problem constraints before starting.",
+    "Master recursion and iterative approaches for common patterns.",
+    "Practice regularly to build muscle memory."
+  ];
+  const interviewAdvice = [
+    "Communicate your thought process clearly during interviews.",
+    "Ask clarifying questions if the problem statement is unclear.",
+    "Start with a brute-force solution, then optimize.",
+    "Don't be afraid to admit if you don't know something—show your willingness to learn.",
+    "Write clean, bug-free code before optimizing for performance.",
+    "Practice mock interviews with peers or online platforms.",
+    "Review common data structures and algorithms before interviews.",
+    "Stay calm and take a deep breath if you get stuck.",
+    "Explain your approach before jumping into code.",
+    "Always test your solution with sample inputs."
+  ];
+
+  const [tipIndex, setTipIndex] = useState<number>(0);
+
+  const getCurrentTip = () => {
+    // Alternate between tips and advice
+    const total = tips.length + interviewAdvice.length;
+    const idx = tipIndex % total;
+    if (idx % 2 === 0) {
+      // Even: tip
+      return { type: 'tip', text: tips[Math.floor(idx / 2) % tips.length] };
+    } else {
+      // Odd: advice
+      return { type: 'advice', text: interviewAdvice[Math.floor(idx / 2) % interviewAdvice.length] };
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
@@ -299,9 +340,18 @@ export default function Home() {
           >
             🎲 Random Problem
           </button>
-          <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-            🎯 Set Goal
-          </button>
+          <div className="relative">
+            <button
+              className="bg-green-400 hover:bg-green-500 text-green-900 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition"
+              onClick={() => setTipIndex((prev) => prev + 1)}
+              title="Show another tip or advice"
+            >
+              💡 {getCurrentTip().type === 'tip' ? 'DSA Tip' : 'Interview Advice'}
+            </button>
+            <div className="mt-2 text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-2 shadow w-64">
+              {getCurrentTip().text}
+            </div>
+          </div>
         </div>
       </div>
 
