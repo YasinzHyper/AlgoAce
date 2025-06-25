@@ -612,38 +612,49 @@ export default function Home() {
       )}
 
       {randomProblem && (
-        <div className="fixed top-24 right-4 z-50 bg-white border border-gray-300 shadow-lg rounded-lg p-6 max-w-md w-full">
-          <h2 className="text-xl font-bold mb-2 text-black">{randomProblem.title}</h2>
-          <div className="mb-2 text-xs text-gray-500 flex gap-2">
-            <span className="px-2 py-1 rounded bg-blue-100 text-blue-700">{randomProblem.difficulty}</span>
-            {randomProblem.related_topics && Array.isArray(randomProblem.related_topics)
-              ? randomProblem.related_topics.map((t: string) => (
-                  <span key={t} className="px-2 py-1 rounded bg-gray-100 text-gray-700">{t}</span>
-                ))
-              : null}
-          </div>
-          <div className="mb-2 max-h-60 overflow-y-auto whitespace-pre-line text-sm text-gray-700">
-            {/* Try to split description into paragraphs for readability */}
-            {randomProblem.description
-              ? randomProblem.description
-                  .split(/\n{2,}/)
-                  .map((para: string, idx: number) => (
-                    <p key={idx} className="mb-2">{para.trim()}</p>
+        <div className="fixed top-24 right-4 z-50 max-w-md w-full">
+          <div className="relative rounded-2xl border-4 border-blue-400 bg-gradient-to-br from-blue-50 via-white to-blue-100 shadow-2xl p-6 overflow-hidden animate-fade-in">
+            {/* Decorative gradient ring */}
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-300/30 to-purple-400/20 rounded-full blur-2xl z-0" />
+            <div className="flex items-center gap-3 mb-2 z-10 relative">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-200 border-2 border-blue-400 text-2xl shadow">
+                🎲
+              </span>
+              <h2 className="text-xl font-bold text-blue-900 drop-shadow-sm">{randomProblem.title}</h2>
+            </div>
+            <div className="mb-2 text-xs flex gap-2 z-10 relative">
+              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 border border-blue-300 font-semibold uppercase tracking-wide">{randomProblem.difficulty}</span>
+              {randomProblem.related_topics && Array.isArray(randomProblem.related_topics)
+                ? randomProblem.related_topics.map((t: string) => (
+                    <span key={t} className="px-2 py-1 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">{t}</span>
                   ))
-              : "No description available."}
+                : null}
+            </div>
+            <div className="mb-2 max-h-60 overflow-y-auto whitespace-pre-line text-sm text-gray-800 z-10 relative">
+              {/* Try to split description into paragraphs for readability */}
+              {randomProblem.description
+                ? randomProblem.description
+                    .split(/\n{2,}/)
+                    .map((para: string, idx: number) => (
+                      <p key={idx} className="mb-2 leading-relaxed">{para.trim()}</p>
+                    ))
+                : "No description available."}
+            </div>
+            <div className="flex items-center justify-between mt-4 z-10 relative">
+              <a
+                href={`/problems/${randomProblem.id}`}
+                className="bg-blue-500 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-full shadow transition"
+              >
+                Go to Problem
+              </a>
+              <button
+                className="ml-4 text-xs text-gray-500 hover:text-gray-800 px-3 py-1 rounded-full border border-gray-300 bg-gray-100 transition"
+                onClick={() => setRandomProblem(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <a
-            href={`/problems/${randomProblem.id}`}
-            className="text-blue-600 underline text-sm"
-          >
-            Go to Problem
-          </a>
-          <button
-            className="ml-4 text-xs text-gray-500 hover:text-gray-800"
-            onClick={() => setRandomProblem(null)}
-          >
-            Close
-          </button>
         </div>
       )}
 
