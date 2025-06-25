@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { FiPlay, FiPause, FiRotateCw, FiCamera, FiCameraOff } from 'react-icons/fi';
 
 // Custom Hook for Shake Detection
 export function useShakeDetector(videoRef: React.RefObject<HTMLVideoElement | null>, onShake: () => void) {
@@ -57,8 +58,11 @@ export default function MockInterviewsPage() {
   const [alertShown, setAlertShown] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add timer options
   const timerOptions = [30, 45, 60]; // in minutes
@@ -73,22 +77,15 @@ export default function MockInterviewsPage() {
     }
   };
 
-  // Start Timer Function
+  // Timer logic
   const startTimer = () => {
-    // If customMinutes is set, use that, else use timer
-    let seconds = timer;
-    if (customMinutes) {
-      seconds = parseInt(customMinutes, 10) * 60;
-    }
-    if (!seconds || isNaN(seconds)) {
-      seconds = 45 * 60;
-    }
-    setTimer(seconds);
+    if (timerActive || timer === 0) return;
     setTimerActive(true);
-    const interval = setInterval(() => {
+    setHasStarted(true);
+    timerRef.current = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 0) {
-          clearInterval(interval);
+          clearInterval(timerRef.current!);
           setTimerActive(false);
           return 0;
         }
@@ -97,38 +94,28 @@ export default function MockInterviewsPage() {
     }, 1000);
   };
 
-  // Pause Timer Function
   const pauseTimer = () => {
     setTimerActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  // Reset Timer Function
   const resetTimer = () => {
     setTimer(0);
     setTimerActive(false);
+    setHasStarted(false);
+    if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  // Timer selection handler
-  const handleTimerSelect = (minutes: number) => {
-    setTimer(minutes * 60);
-    setCustomMinutes('');
-    setTimerActive(false);
-  };
-
-  // Custom input handler
-  const handleCustomInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/[^0-9]/g, '');
-    setCustomMinutes(val);
-    if (val) {
-      setTimer(parseInt(val, 10) * 60);
-      setTimerActive(false);
-    }
-  };
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
 
   // Camera Setup
   useEffect(() => {
     let stream: MediaStream | null = null;
     const getCamera = async () => {
+      setCameraError(null);
       if (!cameraOn) {
         if (videoRef.current && videoRef.current.srcObject) {
           (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
@@ -141,7 +128,8 @@ export default function MockInterviewsPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-      } catch (err) {
+      } catch (err: any) {
+        setCameraError('Camera access denied or unavailable. Please allow camera permissions in your browser settings.');
         console.error('Camera access denied', err);
       }
     };
@@ -149,7 +137,7 @@ export default function MockInterviewsPage() {
     return () => {
       if (stream) stream.getTracks().forEach(track => track.stop());
     };
-  }, [cameraOn]);
+  }, [cameraOn, cameraError]);
 
   // Use Shake Detection
   useShakeDetector(videoRef, handleShake);
@@ -157,6 +145,26 @@ export default function MockInterviewsPage() {
   // Handle Camera Toggle
   const handleCameraToggle = () => {
     setCameraOn((prev) => !prev);
+  };
+
+  // Handle timer quick-select
+  const handleTimerSelect = (min: number) => {
+    setTimer(min * 60);
+    setCustomMinutes("");
+    setTimerActive(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  // Handle custom input for timer
+  const handleCustomInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomMinutes(value);
+    const min = parseInt(value, 10);
+    if (!isNaN(min) && min > 0) {
+      setTimer(min * 60);
+    } else {
+      setTimer(0);
+    }
   };
 
   return (
@@ -217,21 +225,27 @@ export default function MockInterviewsPage() {
                   placeholder="Custom"
                   value={customMinutes}
                   onChange={handleCustomInput}
-                  className="w-24 px-3 py-2 rounded-full border border-gray-300 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center appearance-none"
+                  className="w-32 px-3 py-2 rounded-full border border-gray-300 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center appearance-none"
                   style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">min</span>
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={startTimer} disabled={timer > 0 && timerActive || timer === 0}>
-                Start Timer
+              <Button variant="outline" onClick={startTimer} disabled={timerActive || timer === 0}>
+                {timerActive ? (
+                  <><FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Running...</span></>
+                ) : (!hasStarted ? (
+                  <><FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Start Timer</span></>
+                ) : (
+                  <><FiPlay className="inline mr-1 text-blue-500" /> <span className="text-blue-600">Resume</span></>
+                ))}
               </Button>
               <Button variant="outline" onClick={pauseTimer} disabled={!timerActive}>
-                Pause
+                <FiPause className="inline mr-1 text-blue-500" /> <span className="text-blue-600">Pause</span>
               </Button>
               <Button variant="outline" onClick={resetTimer}>
-                Reset
+                <FiRotateCw className="inline mr-1 text-red-500" /> <span className="text-red-600">Reset</span>
               </Button>
             </div>
             <p className="text-lg font-bold">Time Remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</p>
@@ -244,8 +258,16 @@ export default function MockInterviewsPage() {
 
       {/* Add Camera */}
       <div className="my-4">
+        {cameraOn && !videoRef.current?.srcObject && !cameraError && (
+          <div className="mb-2 text-yellow-400 text-sm">Please allow camera access in your browser to enable this feature.</div>
+        )}
+        {cameraError && (
+          <div className="mb-2 text-red-500 text-sm">{cameraError}</div>
+        )}
         <div className="flex items-center gap-2 mb-2">
-          <Button variant="outline" onClick={handleCameraToggle}>{cameraOn ? 'Turn Camera Off' : 'Turn Camera On'}</Button>
+          <Button variant="outline" onClick={handleCameraToggle}>
+            {cameraOn ? <><FiCameraOff className="inline mr-1" /> Turn Camera Off</> : <><FiCamera className="inline mr-1" /> Turn Camera On</>}
+          </Button>
           <span className="text-sm text-gray-500">Camera {cameraOn ? 'On' : 'Off'} – Motion monitored</span>
         </div>
         <video ref={videoRef} autoPlay muted className="w-full max-w-md rounded-md border" style={{ display: cameraOn ? 'block' : 'none' }} />
