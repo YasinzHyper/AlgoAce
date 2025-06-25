@@ -9,29 +9,6 @@ import { cn } from "@/utils/supabase/utils"
 import { supabase } from "@/utils/supabase/client";
 
 export default function Home() {
-  const testimonials = [
-    {
-      quote:
-        "AlgoAce helped me land a job at Google. The structured roadmap and practice problems are gold.",
-      name: "Anjali R., Software Engineer",
-    },
-    {
-      quote:
-        "Best platform I’ve used for DSA prep. Clean UI and practical features.",
-      name: "Rohit K., Final Year CS Student",
-    },
-    {
-      quote:
-        "I love the progress tracker and weekly updates. Keeps me motivated.",
-      name: "Priya S., Aspiring SDE",
-    },
-    {
-      quote:
-        "AlgoAce’s roadmap made everything less overwhelming. Super helpful for interview prep.",
-      name: "Nikhil T., Backend Developer",
-    },
-  ];
-
   const reviews = [
     {
       name: "Rohit K",
@@ -115,7 +92,6 @@ export default function Home() {
     );
   };
 
-  const [current, setCurrent] = useState(0);
   const [showCoach, setShowCoach] = useState(false);
   const [chatHistory, setChatHistory] = useState([
     {
@@ -173,13 +149,6 @@ export default function Home() {
       localStorage.setItem('algoace-activity-dates', JSON.stringify(dates));
     }
     setStreak(getStreak());
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % testimonials.length);
-    }, 4000);
-    return () => clearInterval(interval);
   }, []);
 
   // Bot reply logic based on user input or category clicked
@@ -308,21 +277,6 @@ export default function Home() {
         </Link>
         </div>
 
-      {/* Testimonials Carousel */}
-      {/*<div className="relative bg-muted rounded-lg p-6 min-h-[140px]">
-        <h2 className="text-xl font-semibold mb-4">What Our Users Say</h2>
-        {testimonials.map((t, i) => (
-          <div
-            key={i}
-            className={`transition-opacity duration-700 ease-in-out ${
-              i === current ? 'opacity-100' : 'opacity-0 absolute top-0 left-0 w-full p-6'
-            }`}
-          >
-            <blockquote className="italic text-muted-foreground mb-2">{`“${t.quote}”`}</blockquote>
-            <p className="text-sm text-muted-foreground">— {t.name}</p>
-          </div>
-        ))}
-      </div>*/}
       <div className="m-0 ">
         <h2 className="text-xl font-semibold mb-4 align-start">
           What Our Users Say
@@ -428,7 +382,7 @@ export default function Home() {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-gray-500"
+              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-grey-500 text-black"
               placeholder="Ask me something..."
             />
             <button
