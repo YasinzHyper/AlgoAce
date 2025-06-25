@@ -340,16 +340,18 @@ export default function Home() {
           >
             🎲 Random Problem
           </button>
-          <div className="relative">
+          <div className="flex flex-col items-start">
             <button
-              className="bg-green-400 hover:bg-green-500 text-green-900 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition"
+              className="bg-green-400 hover:bg-green-500 text-green-900 px-8 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition mb-1"
               onClick={() => setTipIndex((prev) => prev + 1)}
               title="Show another tip or advice"
             >
               💡 {getCurrentTip().type === 'tip' ? 'DSA Tip' : 'Interview Advice'}
             </button>
-            <div className="mt-2 text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-2 shadow w-64">
-              {getCurrentTip().text}
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-1.5 shadow w-70 text-center">
+                {getCurrentTip().text}
+              </div>
             </div>
           </div>
         </div>
