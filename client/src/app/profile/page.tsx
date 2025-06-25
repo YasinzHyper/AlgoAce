@@ -9,9 +9,108 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Target, Clock, BookOpen, Code2 } from "lucide-react";
 import { ActivityCalendar } from "react-activity-calendar"; // Importing the calendar component
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [isPreviewOnly, setIsPreviewOnly] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load photo from localStorage on mount
+  useEffect(() => {
+    const savedPhoto = typeof window !== 'undefined' ? localStorage.getItem('profilePhoto') : null;
+    if (savedPhoto) setPhotoPreview(savedPhoto);
+  }, []);
+
+  // Open webcam modal
+  const handleTakePhoto = async () => {
+    setShowPhotoModal(true);
+    setPendingPhoto(null);
+    setTimeout(async () => {
+      if (videoRef.current) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          videoRef.current.srcObject = stream;
+        } catch (err) {
+          alert('Unable to access camera.');
+          setShowPhotoModal(false);
+        }
+      }
+    }, 100);
+  };
+
+  // Capture photo from webcam (set as pending)
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        setPendingPhoto(dataUrl);
+        // Stop camera
+        if (video.srcObject) {
+          (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        }
+      }
+    }
+  };
+
+  // Update photoPreview and save to localStorage
+  const setAndSavePhoto = (dataUrl: string) => {
+    setPhotoPreview(dataUrl);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('profilePhoto', dataUrl);
+    }
+  };
+
+  // Upload from gallery (set as pending)
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPendingPhoto(ev.target?.result as string);
+        setIsPreviewOnly(false); // Ensure Save/Discard modal for gallery upload
+        setShowPhotoModal(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Save/discard handlers
+  const handleSavePhoto = () => {
+    if (pendingPhoto) {
+      setAndSavePhoto(pendingPhoto);
+      setPendingPhoto(null);
+      setShowPhotoModal(false);
+    }
+  };
+  const handleDiscardPhoto = () => {
+    setPendingPhoto(null);
+    setShowPhotoModal(false);
+  };
+
+  // Discard existing saved photo
+  const handleDiscardExistingPhoto = () => {
+    setPhotoPreview(null);
+    setPendingPhoto(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('profilePhoto');
+    }
+  };
 
   if (loading) {
     return (
@@ -70,18 +169,83 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
+            <Avatar className="h-20 w-20" onClick={() => {
+              const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
+              if (currentPhoto) {
+                setPendingPhoto(currentPhoto);
+                setIsPreviewOnly(true);
+                setShowPhotoModal(true);
+              }
+            }} style={{ cursor: (pendingPhoto || photoPreview || user.user_metadata?.avatar_url) ? 'pointer' : 'default' }}>
+              <AvatarImage src={pendingPhoto || photoPreview || user.user_metadata?.avatar_url} alt={user.email} />
               <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
               <h3 className="text-lg font-semibold">{user.email}</h3>
               <p className="text-sm text-muted-foreground">Member since {new Date(user.created_at).toLocaleDateString()}</p>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" onClick={handleTakePhoto}>Take Photo</Button>
+                <Button size="sm" variant="outline" onClick={handleUploadClick}>Upload from Gallery</Button>
+                {(photoPreview || pendingPhoto) && (
+                  <Button size="sm" variant="destructive" onClick={handleDiscardExistingPhoto}>Discard Photo</Button>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
+      {/* Webcam Modal & Save/Discard */}
+      {showPhotoModal && (
+        <div className={isPreviewOnly ? "fixed inset-0 z-50 flex items-center justify-center bg-black/60" : "fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/10"}>
+          {isPreviewOnly ? (
+            <>
+              <button
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  setIsPreviewOnly(false);
+                  setPendingPhoto(null);
+                }}
+                className="absolute top-6 right-8 text-white hover:text-gray-300 text-4xl font-bold focus:outline-none z-50"
+                aria-label="Close preview"
+              >
+                ×
+              </button>
+              <img src={pendingPhoto ?? undefined} alt="Preview" className="max-w-[90vw] max-h-[90vh] rounded-lg object-contain shadow-xl z-40" />
+            </>
+          ) : (
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full flex flex-col items-center relative">
+              {!pendingPhoto ? (
+                <>
+                  <video ref={videoRef} autoPlay className="w-64 h-48 rounded mb-4 bg-black" />
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <Button onClick={handleCapture} className="mb-2 w-full">Capture</Button>
+                  <Button variant="outline" onClick={() => {
+                    setShowPhotoModal(false);
+                    if (videoRef.current && videoRef.current.srcObject) {
+                      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+                    }
+                  }} className="w-full">Cancel</Button>
+                </>
+              ) : (
+                <>
+                  <img src={pendingPhoto} alt="Preview" className="w-64 h-48 rounded mb-4 object-cover" />
+                  <div className="flex gap-2 w-full">
+                    <Button onClick={handleSavePhoto} className="w-1/2 bg-green-600 hover:bg-green-700 text-white" variant="default">Save</Button>
+                    <Button onClick={handleDiscardPhoto} className="w-1/2 bg-red-600 hover:bg-red-700 text-white" variant="destructive">Discard</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {/* Stats Overview */}
       <Card>
         <CardHeader>
