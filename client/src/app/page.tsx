@@ -93,7 +93,12 @@ export default function Home() {
   };
 
   const [showCoach, setShowCoach] = useState(false);
-  const [chatHistory, setChatHistory] = useState([
+  type ChatMessage = {
+    role: "user" | "bot";
+    content: string | { type: string; code: string; label: string };
+  };
+
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
       role: "bot",
       content: "Hey there! I'm AlgoBuddy 🤖. Need help with anything?",
@@ -183,8 +188,8 @@ export default function Home() {
   const handleSend = () => {
     if (!userInput.trim()) return;
 
-    const userMessage = { role: "user", content: userInput };
-    const botMessage = {
+    const userMessage: ChatMessage = { role: "user", content: userInput };
+    const botMessage: ChatMessage = {
       role: "bot",
       content: getBotReply(userInput),
     };
@@ -427,8 +432,8 @@ export default function Home() {
                 onClick={() => {
                   setChatHistory((prev) => [
                     ...prev,
-                    { role: "user", content: topic.label },
-                    { role: "bot", content: { type: 'code', code: topic.pseudocode, label: topic.label } },
+                    { role: "user" as const, content: topic.label },
+                    { role: "bot" as const, content: { type: 'code', code: topic.pseudocode, label: topic.label } },
                   ]);
                   setUserInput("");
                 }}
@@ -453,9 +458,11 @@ export default function Home() {
                       <button
                         className="relative group ml-2"
                         onClick={() => {
-                          navigator.clipboard.writeText(msg.content.code.replace(/\\n/g, '\n'));
-                          setCopiedIndex(index);
-                          setTimeout(() => setCopiedIndex((prev) => prev === index ? null : prev), 5000);
+                          if (typeof msg.content === 'object' && 'code' in msg.content) {
+                            navigator.clipboard.writeText(msg.content.code.replace(/\\n/g, '\n'));
+                            setCopiedIndex(index);
+                            setTimeout(() => setCopiedIndex((prev) => prev === index ? null : prev), 5000);
+                          }
                         }}
                         aria-label="Copy pseudocode"
                       >
