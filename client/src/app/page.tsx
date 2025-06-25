@@ -101,6 +101,7 @@ export default function Home() {
   ]);
   const [userInput, setUserInput] = useState("");
   const [randomProblem, setRandomProblem] = useState<any | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null); // For copy-to-clipboard feedback
   // Utility to get today in YYYY-MM-DD
   const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -153,7 +154,14 @@ export default function Home() {
 
   // Bot reply logic based on user input or category clicked
   const getBotReply = (input: string) => {
-    const lowerInput = input.toLowerCase();
+    const lowerInput = input.trim().toLowerCase();
+    if (["hi", "hello", "hey"].includes(lowerInput)) {
+      return (
+        "Hi! I'm AlgoBuddy, your personal DSA assistant. " +
+        "Ask me about algorithms, data structures, or interview prep. " +
+        "I can explain concepts, show pseudocode, and help you practice!"
+      );
+    }
     if (lowerInput.includes('binary search')) {
       return 'Binary search is a logarithmic search algorithm. It divides the search interval in half each time. Make sure the array is sorted!';
     } else if (lowerInput.includes('recursion')) {
@@ -207,6 +215,60 @@ export default function Home() {
       alert(error.message || "Failed to fetch random problem");
     }
   };
+
+  // Refine common topics for chatbot: 10 focused DSA topics with explanations and pseudocode
+  const commonTopics = [
+    {
+      label: "Binary Search",
+      explanation: "Efficiently search a sorted array by repeatedly dividing the search interval in half. Time complexity: O(log n).",
+      pseudocode: `Pseudocode:\nfunction binarySearch(arr, target):\n    left = 0\n    right = length(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        else if arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1`
+    },
+    {
+      label: "Recursion",
+      explanation: "A function calls itself to solve smaller instances of a problem. Useful for divide-and-conquer and tree/graph traversals.",
+      pseudocode: `Pseudocode (Factorial):\nfunction factorial(n):\n    if n == 0 or n == 1:\n        return 1\n    else:\n        return n * factorial(n-1)`
+    },
+    {
+      label: "Dynamic Programming",
+      explanation: "Optimize by storing results of overlapping subproblems. Used for problems like Fibonacci, Knapsack, and more.",
+      pseudocode: `Pseudocode (Fibonacci DP):\nfunction fib(n):\n    dp = array of size n+1\n    dp[0] = 0\n    dp[1] = 1\n    for i from 2 to n:\n        dp[i] = dp[i-1] + dp[i-2]\n    return dp[n]`
+    },
+    {
+      label: "Linked List",
+      explanation: "A linear data structure where elements (nodes) point to the next. Useful for efficient insertions/deletions.",
+      pseudocode: `Pseudocode (Reverse List):\nfunction reverseList(head):\n    prev = null\n    curr = head\n    while curr != null:\n        next = curr.next\n        curr.next = prev\n        prev = curr\n        curr = next\n    return prev`
+    },
+    {
+      label: "Graph",
+      explanation: "A collection of nodes (vertices) and edges. Used to model networks, with algorithms like BFS, DFS, Dijkstra's.",
+      pseudocode: `Pseudocode (BFS):\nfunction BFS(start):\n    queue = empty queue\n    mark start as visited\n    enqueue start\n    while queue not empty:\n        node = dequeue\n        for each neighbor in node.neighbors:\n            if neighbor not visited:\n                mark neighbor as visited\n                enqueue neighbor`
+    },
+    {
+      label: "Stack",
+      explanation: "A LIFO (Last In First Out) data structure. Supports push, pop, and peek operations.",
+      pseudocode: `Pseudocode:\npush(x): add x to top\npop(): remove and return top\npeek(): return top without removing`
+    },
+    {
+      label: "Queue",
+      explanation: "A FIFO (First In First Out) data structure. Supports enqueue and dequeue operations.",
+      pseudocode: `Pseudocode:\nenqueue(x): add x to rear\ndequeue(): remove and return front`
+    },
+    {
+      label: "Heap",
+      explanation: "A complete binary tree used for efficient min/max operations. Commonly used in priority queues and heap sort.",
+      pseudocode: `Pseudocode (Heapify):\nfunction heapify(arr, n, i):\n    largest = i\n    left = 2*i + 1\n    right = 2*i + 2\n    if left < n and arr[left] > arr[largest]:\n        largest = left\n    if right < n and arr[right] > arr[largest]:\n        largest = right\n    if largest != i:\n        swap arr[i], arr[largest]\n        heapify(arr, n, largest)`
+    },
+    {
+      label: "Tree",
+      explanation: "A hierarchical data structure with nodes and edges. Includes binary trees, BSTs, and is used for fast searching and sorting.",
+      pseudocode: `Pseudocode (Inorder Traversal):\nfunction inorder(node):\n    if node is not null:\n        inorder(node.left)\n        visit(node)\n        inorder(node.right)`
+    },
+    {
+      label: "Sorting Algorithms",
+      explanation: "Techniques to arrange data in order. Includes bubble, merge, quick, and heap sort. Time complexity varies by algorithm.",
+      pseudocode: `Pseudocode (Merge Sort):\nfunction mergeSort(arr):\n    if length(arr) > 1:\n        mid = length(arr) // 2\n        left = arr[0:mid]\n        right = arr[mid:]\n        mergeSort(left)\n        mergeSort(right)\n        merge left and right into arr`
+    }
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-12">
@@ -356,25 +418,85 @@ export default function Home() {
               ✕
             </button>
           </div>
+          {/* Common topics as clickable chips with explanations on hover and pseudocode on click */}
+          <div className="flex flex-wrap gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100">
+            {commonTopics.map((topic) => (
+              <button
+                key={topic.label}
+                className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition relative group"
+                onClick={() => {
+                  setChatHistory((prev) => [
+                    ...prev,
+                    { role: "user", content: topic.label },
+                    { role: "bot", content: { type: 'code', code: topic.pseudocode, label: topic.label } },
+                  ]);
+                  setUserInput("");
+                }}
+              >
+                {topic.label}
+                <span className="hidden group-hover:block absolute left-0 top-8 z-10 w-56 bg-white border border-blue-200 text-xs text-gray-700 rounded p-2 shadow-lg">
+                  {topic.explanation}
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="p-4 h-60 overflow-y-auto text-sm space-y-2">
             {chatHistory.map((msg, index) => (
               <div
                 key={index}
                 className={msg.role === "user" ? "text-right" : "text-left"}
               >
-                <div
-                  className={`inline-block px-3 py-2 rounded-lg ${
-                    msg.role === "user"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+                {msg.role === "bot" && typeof msg.content === 'object' && msg.content.type === 'code' ? (
+                  <div className="bg-gray-900 text-green-200 rounded-lg p-2 mb-1 relative">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-xs text-white">{msg.content.label} Pseudocode</span>
+                      <button
+                        className="relative group ml-2"
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.content.code.replace(/\\n/g, '\n'));
+                          setCopiedIndex(index);
+                          setTimeout(() => setCopiedIndex((prev) => prev === index ? null : prev), 5000);
+                        }}
+                        aria-label="Copy pseudocode"
+                      >
+                        {/* Clipboard SVG icon */}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          className="text-blue-300 hover:text-blue-500 transition"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <rect x="3" y="3" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                        {/* Tooltip on hover or after copy */}
+                        <span className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 pointer-events-none transition whitespace-nowrap shadow-lg z-20 opacity-0 group-hover:opacity-100 ${copiedIndex === index ? '!opacity-100' : ''}`}>
+                          {copiedIndex === index ? 'Copied' : 'Copy'}
+                        </span>
+                      </button>
+                    </div>
+                    <textarea
+                      className="w-full bg-gray-900 text-green-200 font-mono text-xs rounded p-1 border border-gray-700 resize-vertical"
+                      style={{ minHeight: 90 }}
+                      defaultValue={msg.content.code.replace(/\\n/g, '\n')}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`inline-block px-3 py-2 rounded-lg ${
+                      msg.role === "user"
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {typeof msg.content === 'string' ? msg.content : ''}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-
           {/* Input area */}
           <div className="p-2 border-t flex gap-2">
             <input
