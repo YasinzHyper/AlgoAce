@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Lightbulb, ListChecks, LineChart } from "lucide-react";
 import { Marquee } from "@/components/magicui/marquee";
 import Image from "next/image";
@@ -354,6 +354,27 @@ export default function Home() {
     },
   ];
 
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [activityDates, setActivityDates] = useState<string[]>([]);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let data = localStorage.getItem('algoace-activity-dates');
+    let dates: string[] = data ? JSON.parse(data) : [];
+    setActivityDates(dates);
+  }, [showCalendar]);
+
+  // Helper to get days in current month
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+  // Helper to check if a date is in activityDates
+  const isVisited = (date: Date) => {
+    const ymd = date.toISOString().slice(0, 10);
+    return activityDates.includes(ymd);
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
@@ -369,8 +390,27 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-4 ml-auto mt-2">
-          <div className="flex items-center gap-1 text-sm text-orange-500 font-medium">
+          <div
+            className="flex items-center gap-1 text-sm text-orange-500 font-medium cursor-pointer relative"
+            title="Your streak increases each day you visit AlgoAce. If you visit on consecutive days, your streak grows! Missing a day resets your streak."
+            onClick={() => setShowCalendar((prev) => !prev)}
+            tabIndex={0}
+            onBlur={e => {
+              // Only close if focus leaves the calendar popup
+              setTimeout(() => {
+                if (calendarRef.current && !calendarRef.current.contains(document.activeElement)) {
+                  setShowCalendar(false);
+                }
+              }, 100);
+            }}
+          >
             🔥 <span>{streak}-day streak</span>
+            {showCalendar && (
+              <div ref={calendarRef} className="absolute top-8 right-0 z-50 bg-white border border-orange-300 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in">
+                <div className="font-semibold text-orange-700 mb-2 text-center">Your Activity This Month</div>
+                <MiniCalendar activityDates={activityDates} />
+              </div>
+            )}
           </div>
           <button
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
@@ -675,6 +715,85 @@ export default function Home() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+// MiniCalendar component
+function MiniCalendar({ activityDates }: { activityDates: string[] }) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+  const isFirstMount = useRef(true);
+
+  useEffect(() => {
+    // Only reset to current month/year on first mount, not every time calendar is shown
+    if (isFirstMount.current) {
+      setViewYear(today.getFullYear());
+      setViewMonth(today.getMonth());
+      isFirstMount.current = false;
+    }
+    // Do not reset on subsequent show/hide
+    // eslint-disable-next-line
+  }, []);
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const ymd = (d: number) => `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const isToday = (dateStr: string) => dateStr === today.toISOString().slice(0, 10);
+  const monthName = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long' });
+  const visitedCount = activityDates.filter(date => date.startsWith(`${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`)).length;
+
+  // Navigation handlers
+  const handlePrev = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setViewMonth(m => {
+      if (m === 0) {
+        setViewYear(y => y - 1);
+        return 11;
+      } else {
+        return m - 1;
+      }
+    });
+  };
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setViewMonth(m => {
+      if (m === 11) {
+        setViewYear(y => y + 1);
+        return 0;
+      } else {
+        return m + 1;
+      }
+    });
+  };
+
+  return (
+    <div onClick={e => e.stopPropagation()}>
+      <div className="flex justify-between items-center text-xs mb-1 text-gray-500">
+        <button onClick={handlePrev} className="px-2 py-1 rounded hover:bg-gray-200 text-gray-700 font-bold" type="button">&#8592; Prev</button>
+        <span>{monthName} {viewYear}</span>
+        <button onClick={handleNext} className="px-2 py-1 rounded hover:bg-gray-200 text-gray-700 font-bold" type="button">Next &#8594;</button>
+      </div>
+      <div className="text-center text-xs mb-1 text-orange-700 font-semibold">Visited: {visitedCount}d</div>
+      <div className="grid grid-cols-7 gap-1 text-xs">
+        {["S","M","T","W","T","F","S"].map((d, i) => (
+          <div key={d + i} className="text-center font-bold text-gray-400">{d}</div>
+        ))}
+        {Array(firstDay).fill(null).map((_, i) => <div key={"empty-" + i}></div>)}
+        {Array(daysInMonth).fill(null).map((_, i) => {
+          const dateStr = ymd(i + 1);
+          const visited = activityDates.includes(dateStr);
+          return (
+            <div
+              key={"day-" + (i + 1)}
+              className={`rounded-full w-7 h-7 flex items-center justify-center ${visited ? 'bg-orange-400 text-white font-bold shadow' : 'bg-gray-100 text-gray-700'} ${isToday(dateStr) ? 'ring-2 ring-orange-600' : ''}`}
+            >
+              {i + 1}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
