@@ -703,15 +703,9 @@ export default function Home() {
         <div className="max-w-screen-xl mx-auto text-center">
           <p className="text-s">© 2025 AlgoAce. All rights reserved.</p>
           <div className="flex justify-center gap-6 mt-4 text-xs">
-            <a href="#" className="hover:text-primary">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-primary">
-              Terms of Service
-            </a>
-            <a href="#" className="hover:text-primary">
-              Contact Us
-            </a>
+            <Link href="/footer/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
+            <Link href="/footer/terms-of-service" className="hover:text-primary">Terms of Service</Link>
+            <Link href="/footer/contact-us" className="hover:text-primary">Contact Us</Link>
           </div>
         </div>
       </footer>
