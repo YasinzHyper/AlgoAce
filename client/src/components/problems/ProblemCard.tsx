@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
 import { BookOpen, Building, Tag, Star } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ProblemDetail {
   id: number
@@ -22,6 +22,17 @@ interface ProblemCardProps {
 export default function ProblemCard({ problem }: ProblemCardProps) {
   const [isCompleted, setIsCompleted] = useState(false)
   const [isImportant, setIsImportant] = useState(false)
+
+  // Load important state from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`important-problem-${problem.id}`)
+    if (saved === 'true') setIsImportant(true)
+  }, [problem.id])
+
+  // Save important state to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem(`important-problem-${problem.id}`, isImportant ? 'true' : 'false')
+  }, [isImportant, problem.id])
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -50,33 +61,35 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
   return (
     <Card className={`hover:shadow-lg transition-all duration-300 bg-gradient-to-br ${getCardGradient(problem.difficulty)} border-0`}>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-black" />
-            <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <BookOpen className="h-5 w-5 text-black flex-shrink-0" />
+            <div className="flex items-center gap-2 min-w-0">
               <Checkbox
                 id={`completed-${problem.id}`}
                 checked={isCompleted}
                 onCheckedChange={(checked) => setIsCompleted(checked as boolean)}
-                className="border-gray-400"
+                className="border-gray-400 flex-shrink-0"
               />
-              <Link href={`/problems/${problem.id}`}>
-                <CardTitle className="hover:text-blue-600 transition-colors text-sm font-semibold text-black">
+              <Link href={`/problems/${problem.id}`} className="min-w-0">
+                <CardTitle className="hover:text-blue-600 transition-colors text-m font-semibold text-black min-w-0 break-words whitespace-normal">
                   {problem.title}
                 </CardTitle>
               </Link>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
             <Button
               variant="ghost"
               size="icon"
-              className={`h-9 w-9 ${isImportant ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-500`}
+              className={`h-9 w-9 ${isImportant ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-500 flex-shrink-0`}
               onClick={() => setIsImportant(!isImportant)}
             >
               <Star className="h-5 w-5" fill={isImportant ? 'currentColor' : 'none'} />
             </Button>
-            <Badge className={`${getDifficultyColor(problem.difficulty)} font-medium`}>{problem.difficulty}</Badge>
+            <Badge className={`${getDifficultyColor(problem.difficulty)} font-medium truncate whitespace-nowrap overflow-hidden max-w-[90px]`}>
+              {problem.difficulty}
+            </Badge>
           </div>
         </div>
       </CardHeader>
@@ -106,10 +119,10 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {displayedCompanies.map(company => (
-                <Badge key={company} variant="secondary" className="bg-white/50 border-purple-200 hover:bg-purple-50 transition-colors" style={{ color: 'black' }}>{company}</Badge>
+                <Badge key={company} variant="outline" className="bg-white/50 border-blue-200 hover:bg-blue-50 transition-colors" style={{ color: 'black' }}>{company}</Badge>
               ))}
               {moreCompaniesCount > 0 && (
-                <Badge variant="secondary" className="bg-white/50 border-purple-200 hover:bg-purple-50 transition-colors" style={{ color: 'black' }}>+{moreCompaniesCount} more</Badge>
+                <Badge variant="outline" className="bg-white/50 border-blue-200 hover:bg-blue-50 transition-colors" style={{ color: 'black' }}>+{moreCompaniesCount} more</Badge>
               )}
             </div>
           </div>
