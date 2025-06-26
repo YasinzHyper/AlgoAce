@@ -15,7 +15,6 @@ const RoadmapDashboard = () => {
   const [roadmaps, setRoadmaps] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // const { toast } = toast()
   const router = useRouter()
 
   useEffect(() => {
@@ -73,47 +72,67 @@ const RoadmapDashboard = () => {
     }
   }
 
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error: {error}</div>
+  // Remove sort/filter logic, just show all roadmaps
+  let displayedRoadmaps = roadmaps;
+
+  if (loading) return <div className="flex items-center justify-center h-96 text-lg text-muted-foreground">Loading your roadmaps...</div>
+  if (error) return <div className="flex items-center justify-center h-96 text-lg text-red-500">Error: {error}</div>
 
   return (
     <div className="p-6">
       <Toaster />
-      <h1 className="text-3xl font-bold mb-6">Your Roadmaps</h1>
-      <Button asChild className="mb-6">
-        <Link href="/roadmap/create">Create New Roadmap</Link>
+      <h1 className="text-3xl font-bold mb-6 text-primary">Your Roadmaps</h1>
+      <Button asChild className="flex items-center gap-2 px-5 py-2 text-base font-semibold bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:from-blue-600 hover:to-indigo-600 mb-6">
+        <Link href="/roadmap/create">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          Create New Roadmap
+        </Link>
       </Button>
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {roadmaps.map(roadmap => (
-          <RoadmapCard key={roadmap.id} roadmap={roadmap} onDelete={handleDelete} />
-        ))}
-      </div>
+      {displayedRoadmaps.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a4 4 0 00-4-4H7a4 4 0 00-4 4v10a4 4 0 004 4h10a4 4 0 004-4v-4a4 4 0 00-4-4h-4" /></svg>
+          <span className="text-lg">No roadmaps found. Start by creating a new roadmap!</span>
+        </div>
+      ) : (
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+          {displayedRoadmaps.map(roadmap => (
+            <RoadmapCard key={roadmap.id} roadmap={roadmap} onDelete={handleDelete} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 const RoadmapCard = ({ roadmap, onDelete }: { roadmap: any, onDelete: (id: number) => void }) => {
-  const { goal, weeks, company } = roadmap.user_input
+  const { goal, weeks, company, deadline, role } = roadmap.user_input;
+  const deadlineDate = deadline ? new Date(deadline).toLocaleDateString() : 'N/A';
   return (
-    <Card>
+    <Card className="transition-shadow duration-200 hover:shadow-2xl hover:border-primary border border-gray-200 bg-blue/90">
       <CardHeader>
-        <CardTitle>{goal}</CardTitle>
+        <CardTitle className="flex flex-col gap-1 text-xl font-semibold">
+          <span className="break-words max-w-full">{goal}</span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {company && <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium w-fit">{company}</span>}
+            {role && <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium w-fit">{role}</span>}
+          </div>
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <p>Weeks: {weeks}</p>
-        {company && <p>Company: {company}</p>}
-        <div className="mt-4 flex justify-between">
-          <div className="flex gap-2">
-            <Link href={`/roadmap/${roadmap.id}`}>
-              <Button variant="outline" className='cursor-pointer'>View</Button>
-            </Link>
-            <Link href={`/problems?roadmap=${roadmap.id}`}>
-              <Button variant="secondary" className='cursor-pointer'>Problems</Button>
-            </Link>
-          </div>
+        <div className="flex flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
+          <span className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">{weeks} weeks</span>
+          <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Deadline: {deadlineDate}</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 items-center">
+          <Link href={`/roadmap/${roadmap.id}`} className="w-full">
+            <Button variant="default" className="w-full cursor-pointer bg-green-500 hover:bg-green-600 text-white">View</Button>
+          </Link>
+          <Link href={`/problems?roadmap=${roadmap.id}`} className="w-full">
+            <Button variant="secondary" className="w-full cursor-pointer">Problems</Button>
+          </Link>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className='cursor-pointer'>Delete</Button>
+              <Button variant="destructive" className="w-full cursor-pointer col-span-2">Delete</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -131,7 +150,7 @@ const RoadmapCard = ({ roadmap, onDelete }: { roadmap: any, onDelete: (id: numbe
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default RoadmapDashboard
