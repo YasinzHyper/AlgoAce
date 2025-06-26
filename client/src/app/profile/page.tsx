@@ -225,8 +225,8 @@ export default function ProfilePage() {
                 <>
                   <video ref={videoRef} autoPlay className="w-64 h-48 rounded mb-4 bg-black" />
                   <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  <Button onClick={handleCapture} className="mb-2 w-full" variant="default">Capture</Button>
-                  <Button variant="destructive" onClick={() => {
+                  <Button onClick={handleCapture} className="mb-2 w-full">Capture</Button>
+                  <Button variant="outline" onClick={() => {
                     setShowPhotoModal(false);
                     if (videoRef.current && videoRef.current.srcObject) {
                       (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());

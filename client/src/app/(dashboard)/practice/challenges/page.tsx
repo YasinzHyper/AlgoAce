@@ -150,7 +150,7 @@ export default function CodingChallengesPage() {
                 } else {
                   timerButtonContent = (
                     <>
-                      <FiPlay className="inline mr-1 text-blue-500" /> <span className="text-blue-600">Resume</span>
+                      <FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Resume</span>
                     </>
                   );
                 }
