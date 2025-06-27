@@ -237,8 +237,8 @@ export default function ProblemsPage() {
           )}
           {otherTopics.length > 0 && (
             <div className="mt-4">
-              <h4 className="font-semibold text-gray-700">Other Topics:</h4>
-              <ul className="list-disc pl-5 text-gray-600">
+              <h4 className="font-semibold text-white-700">Other Topics:</h4>
+              <ul className="list-disc pl-5 text-white-600">
                 {otherTopics.map((topic, idx) => (
                   <li key={idx}>{topic}</li>
                 ))}

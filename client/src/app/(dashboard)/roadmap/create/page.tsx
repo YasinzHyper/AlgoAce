@@ -28,7 +28,7 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
+import { cn } from "@/utils/supabase/utils"
 
 const knowledgeSchema = z.object({
   topic: z.string().min(1, "Topic is required"),

@@ -1,6 +1,6 @@
 import { Code2Icon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/supabase/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
