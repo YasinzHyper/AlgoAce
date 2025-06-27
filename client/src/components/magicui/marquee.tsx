@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/supabase/utils";
 import { ComponentPropsWithoutRef } from "react";
 
 interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
@@ -46,10 +46,8 @@ export function Marquee({
       {...props}
       className={cn(
         "group flex flex-1 overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]",
-        {
-          "flex-row": !vertical,
-          "flex-col": vertical,
-        },
+        !vertical ? "flex-row" : "",
+        vertical ? "flex-col" : "",
         className,
       )}
     >
@@ -58,12 +56,16 @@ export function Marquee({
         .map((_, i) => (
           <div
             key={i}
-            className={cn("flex shrink-0 justify-around [gap:var(--gap)]", {
-              "animate-marquee flex-row": !vertical,
-              "animate-marquee-vertical flex-col": vertical,
-              "group-hover:[animation-play-state:paused]": pauseOnHover,
-              "[animation-direction:reverse]": reverse,
-            })}
+            className={[
+              "flex shrink-0 justify-around [gap:var(--gap)]",
+              !vertical && "animate-marquee flex-row",
+              vertical && "animate-marquee-vertical flex-col",
+              pauseOnHover && "group-hover:[animation-play-state:paused]",
+              reverse && "[animation-direction:reverse]",
+            ]
+              .filter(Boolean)
+              .join(" ")
+            }
           >
             {children}
           </div>

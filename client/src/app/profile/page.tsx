@@ -1,16 +1,116 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/contexts/auth-context"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Trophy, Target, Clock, BookOpen, Code2 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Trophy, Target, Clock, BookOpen, Code2 } from "lucide-react";
+import { ActivityCalendar } from "react-activity-calendar"; // Importing the calendar component
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth()
+  const { user, loading } = useAuth();
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [isPreviewOnly, setIsPreviewOnly] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load photo from localStorage on mount
+  useEffect(() => {
+    const savedPhoto = typeof window !== 'undefined' ? localStorage.getItem('profilePhoto') : null;
+    if (savedPhoto) setPhotoPreview(savedPhoto);
+  }, []);
+
+  // Open webcam modal
+  const handleTakePhoto = async () => {
+    setShowPhotoModal(true);
+    setPendingPhoto(null);
+    setTimeout(async () => {
+      if (videoRef.current) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          videoRef.current.srcObject = stream;
+        } catch (err) {
+          alert('Unable to access camera.');
+          setShowPhotoModal(false);
+        }
+      }
+    }, 100);
+  };
+
+  // Capture photo from webcam (set as pending)
+  const handleCapture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        setPendingPhoto(dataUrl);
+        // Stop camera
+        if (video.srcObject) {
+          (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+        }
+      }
+    }
+  };
+
+  // Update photoPreview and save to localStorage
+  const setAndSavePhoto = (dataUrl: string) => {
+    setPhotoPreview(dataUrl);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('profilePhoto', dataUrl);
+    }
+  };
+
+  // Upload from gallery (set as pending)
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPendingPhoto(ev.target?.result as string);
+        setIsPreviewOnly(false); // Ensure Save/Discard modal for gallery upload
+        setShowPhotoModal(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Save/discard handlers
+  const handleSavePhoto = () => {
+    if (pendingPhoto) {
+      setAndSavePhoto(pendingPhoto);
+      setPendingPhoto(null);
+      setShowPhotoModal(false);
+    }
+  };
+  const handleDiscardPhoto = () => {
+    setPendingPhoto(null);
+    setShowPhotoModal(false);
+  };
+
+  // Discard existing saved photo
+  const handleDiscardExistingPhoto = () => {
+    setPhotoPreview(null);
+    setPendingPhoto(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('profilePhoto');
+    }
+  };
 
   if (loading) {
     return (
@@ -43,7 +143,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -56,7 +156,7 @@ export default function ProfilePage() {
           </CardHeader>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -69,18 +169,83 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
+            <Avatar className="h-20 w-20" onClick={() => {
+              const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
+              if (currentPhoto) {
+                setPendingPhoto(currentPhoto);
+                setIsPreviewOnly(true);
+                setShowPhotoModal(true);
+              }
+            }} style={{ cursor: (pendingPhoto || photoPreview || user.user_metadata?.avatar_url) ? 'pointer' : 'default' }}>
+              <AvatarImage src={pendingPhoto || photoPreview || user.user_metadata?.avatar_url} alt={user.email} />
               <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
               <h3 className="text-lg font-semibold">{user.email}</h3>
               <p className="text-sm text-muted-foreground">Member since {new Date(user.created_at).toLocaleDateString()}</p>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" onClick={handleTakePhoto}>Take Photo</Button>
+                <Button size="sm" variant="outline" onClick={handleUploadClick}>Upload from Gallery</Button>
+                {(photoPreview || pendingPhoto) && (
+                  <Button size="sm" variant="destructive" onClick={handleDiscardExistingPhoto}>Discard Photo</Button>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
-
+      {/* Webcam Modal & Save/Discard */}
+      {showPhotoModal && (
+        <div className={isPreviewOnly ? "fixed inset-0 z-50 flex items-center justify-center bg-black/60" : "fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/10"}>
+          {isPreviewOnly ? (
+            <>
+              <button
+                onClick={() => {
+                  setShowPhotoModal(false);
+                  setIsPreviewOnly(false);
+                  setPendingPhoto(null);
+                }}
+                className="absolute top-6 right-8 text-white hover:text-gray-300 text-4xl font-bold focus:outline-none z-50"
+                aria-label="Close preview"
+              >
+                ×
+              </button>
+              <img src={pendingPhoto ?? undefined} alt="Preview" className="max-w-[90vw] max-h-[90vh] rounded-lg object-contain shadow-xl z-40" />
+            </>
+          ) : (
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full flex flex-col items-center relative">
+              {!pendingPhoto ? (
+                <>
+                  <video ref={videoRef} autoPlay className="w-64 h-48 rounded mb-4 bg-black" />
+                  <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  <Button onClick={handleCapture} className="mb-2 w-full">Capture</Button>
+                  <Button variant="outline" onClick={() => {
+                    setShowPhotoModal(false);
+                    if (videoRef.current && videoRef.current.srcObject) {
+                      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+                    }
+                  }} className="w-full">Cancel</Button>
+                </>
+              ) : (
+                <>
+                  <img src={pendingPhoto} alt="Preview" className="w-64 h-48 rounded mb-4 object-cover" />
+                  <div className="flex gap-2 w-full">
+                    <Button onClick={handleSavePhoto} className="w-1/2 bg-green-600 hover:bg-green-700 text-white" variant="default">Save</Button>
+                    <Button onClick={handleDiscardPhoto} className="w-1/2 bg-red-600 hover:bg-red-700 text-white" variant="destructive">Discard</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {/* Stats Overview */}
       <Card>
         <CardHeader>
@@ -242,6 +407,127 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Calendar Heatmap */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Over Time</CardTitle>
+          <CardDescription>Your daily activity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ActivityCalendar
+            data={[
+              { date: '2025-06-01', count: 1, level: 1 },
+              { date: '2025-06-02', count: 2, level: 2 },
+                            { date: '2025-06-03', count: 3, level: 3 },
+              { date: '2025-06-04', count: 0, level: 0 },
+              { date: '2025-06-05', count: 1, level: 1 },
+              // Add more activity data as needed
+            ]}
+            labels={{
+              legend: {
+                less: 'Less',
+                more: 'More',
+              },
+              months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+              weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            }}
+            theme={{
+              light: ['#ebedf0', '#c6e48b', '#7bc96f', '#239a3b', '#196127'],
+            }}
+            showWeekdayLabels
+          />
+        </CardContent>
+      </Card>
+
+      {/* Weekly Goals */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Goals</CardTitle>
+          <CardDescription>Stay focused and hit your targets</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Problems to Solve</span>
+                <span className="text-sm text-muted-foreground">3 / 5</span>
+              </div>
+              <Progress value={(3 / 5) * 100} />
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Hours to Study</span>
+                <span className="text-sm text-muted-foreground">6 / 10</span>
+              </div>
+              <Progress value={(6 / 10) * 100} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Achievements */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Achievements</CardTitle>
+          <CardDescription>Milestones you’ve unlocked</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="flex items-center space-x-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              <span>10 Problems Solved</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Target className="h-5 w-5 text-blue-500" />
+              <span>5-Day Streak</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-green-500" />
+              <span>10 Hours Logged</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* XP / Level System */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Experience</CardTitle>
+          <CardDescription>Gamify your growth</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <p>Level 2</p>
+            <Progress value={40} />
+            <p className="text-sm text-muted-foreground">40 XP / 100 XP to next level</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Leaderboard */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Leaderboard</CardTitle>
+          <CardDescription>See where you rank</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            <li className="flex justify-between">
+              <span>🥇 Alice</span>
+              <span>120 XP</span>
+            </li>
+            <li className="flex justify-between">
+              <span>🥈 Bob</span>
+              <span>100 XP</span>
+            </li>
+            <li className="flex justify-between font-semibold">
+              <span>🥉 You</span>
+              <span>90 XP</span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
-  )
-} 
+  );
+}
