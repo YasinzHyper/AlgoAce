@@ -475,9 +475,9 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-12">
+    <div className="flex flex-1 flex-col gap-6"> {/* Reduced gap from 12 to 6 */}
       {/* Header with Top-Right Additions */}
-      <div className="flex justify-between items-start flex-wrap gap-4">
+      <div className="flex justify-between items-start flex-wrap gap-2"> {/* Reduced gap from 4 to 2 */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
             Welcome to AlgoAce
@@ -488,7 +488,7 @@ export default function Home() {
           </p>
         </div>
         {/* Simple Search Bar (Global) */}
-        <div ref={searchRef} className="w-full sm:w-72 max-w-md ml-auto mt-2 sm:mt-0">
+        <div ref={searchRef} className="w-full sm:w-72 max-w-md ml-auto mt-1 sm:mt-0"> {/* Reduced mt-2 to mt-1 */}
           <div className="relative">
             <input
               type="text"
@@ -626,8 +626,58 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Streak, Random Problem, and Tips Section */}
+      <div className="flex items-center gap-3.5 ml-auto mt-1"> {/* Reduced gap from 4 to 3.5, mt-2 to mt-1 */}
+        {/* Streak Display */}
+        <div
+          className="flex items-center gap-1 text-sm text-orange-500 font-medium cursor-pointer relative"
+          title="Your streak increases each day you visit AlgoAce. If you visit on consecutive days, your streak grows! Missing a day resets your streak."
+          onClick={() => setShowCalendar((prev) => !prev)}
+          tabIndex={0}
+          onBlur={e => {
+            setTimeout(() => {
+              if (calendarRef.current && !calendarRef.current.contains(document.activeElement)) {
+                setShowCalendar(false);
+              }
+            }, 100);
+          }}
+        >
+          🔥 <span>{streak}-day streak</span>
+          {showCalendar && (
+            <div ref={calendarRef} className="absolute top-8 right-0 z-50 bg-white border border-orange-300 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in">
+              <div className="font-semibold text-orange-700 mb-2 text-center">Your Activity This Month</div>
+              <MiniCalendar activityDates={activityDates} />
+            </div>
+          )}
+        </div>
+        {/* Random Problem Button */}
+        <button
+          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
+          onClick={handleRandomProblem}
+          title="Get a random LeetCode problem to practice!"
+        >
+          🎲 Random Problem
+        </button>
+        {/* Tips/Advice Section */}
+        <div className="flex flex-col items-start">
+          <button
+            className="bg-green-400 hover:bg-green-500 text-green-900 px-8 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition mb-1"
+            onClick={() => setTipIndex((prev) => prev + 1)}
+            title="Show another tip or advice"
+            type="button"
+          >
+            💡 {getCurrentTip().type === 'tip' ? 'DSA Tip' : 'Interview Advice'}
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-1.5 shadow w-70 text-center">
+              {getCurrentTip().text}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Features Section */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"> {/* Reduced gap from 4 to 3 */}
           <Link href="/roadmap" passHref>
             <div className="rounded-lg border border-blue-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
               <div className="flex items-center gap-2 mb-2">
@@ -954,16 +1004,19 @@ function MiniCalendar({ activityDates }: { activityDates: string[] }) {
   };
 
   return (
-    <div onClick={e => e.stopPropagation()}>
-      <div className="flex justify-between items-center text-xs mb-1 text-gray-500">
-        <button onClick={handlePrev} className="px-2 py-1 rounded hover:bg-gray-200 text-gray-700 font-bold" type="button">&#8592; Prev</button>
+    <div
+      onClick={e => e.stopPropagation()}
+      className="bg-white dark:bg-slate-900 border border-orange-300 dark:border-orange-700 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in"
+    >
+      <div className="flex justify-between items-center text-xs mb-1 text-gray-500 dark:text-gray-300">
+        <button onClick={handlePrev} className="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 font-bold" type="button">&#8592; Prev</button>
         <span>{monthName} {viewYear}</span>
-        <button onClick={handleNext} className="px-2 py-1 rounded hover:bg-gray-200 text-gray-700 font-bold" type="button">Next &#8594;</button>
+        <button onClick={handleNext} className="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 font-bold" type="button">Next &#8594;</button>
       </div>
-      <div className="text-center text-xs mb-1 text-orange-700 font-semibold">Visited: {visitedCount}d</div>
+      <div className="text-center text-xs mb-1 text-orange-700 dark:text-orange-300 font-semibold">Visited: {visitedCount}d</div>
       <div className="grid grid-cols-7 gap-1 text-xs">
-        {["S","M","T","W","T","F","S"].map((d, i) => (
-          <div key={d + i} className="text-center font-bold text-gray-400">{d}</div>
+        {['S','M','T','W','T','F','S'].map((d, i) => (
+          <div key={d + i} className="text-center font-bold text-gray-400 dark:text-gray-500">{d}</div>
         ))}
         {Array(firstDay).fill(null).map((_, i) => <div key={"empty-" + i}></div>)}
         {Array(daysInMonth).fill(null).map((_, i) => {
@@ -972,7 +1025,7 @@ function MiniCalendar({ activityDates }: { activityDates: string[] }) {
           return (
             <div
               key={"day-" + (i + 1)}
-              className={`rounded-full w-7 h-7 flex items-center justify-center ${visited ? 'bg-orange-400 text-white font-bold shadow' : 'bg-gray-100 text-gray-700'} ${isToday(dateStr) ? 'ring-2 ring-orange-600' : ''}`}
+              className={`rounded-full w-7 h-7 flex items-center justify-center ${visited ? 'bg-orange-400 text-white font-bold shadow' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-200'} ${isToday(dateStr) ? 'ring-2 ring-orange-600 dark:ring-orange-400' : ''}`}
             >
               {i + 1}
             </div>
