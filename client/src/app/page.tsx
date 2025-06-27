@@ -375,6 +375,105 @@ export default function Home() {
     return activityDates.includes(ymd);
   };
 
+  // --- SEARCH BAR LOGIC (SIMPLE, ERROR-FREE, ALL DATA SOURCES) ---
+  const [problems, setProblems] = useState<any[]>([]);
+  useEffect(() => {
+    fetch("/leetcode-problems-dataset.json")
+      .then((res) => res.json())
+      .then((data) => setProblems(data))
+      .catch(() => setProblems([]));
+  }, []);
+
+  // Static roadmap topics (example, can be replaced with dynamic data)
+  const roadmapTopics = [
+    { id: 1, title: "Arrays & Strings", description: "Master the basics of arrays and strings." },
+    { id: 2, title: "Linked Lists", description: "Learn about singly and doubly linked lists." },
+    { id: 3, title: "Trees & Graphs", description: "Understand tree and graph traversals." },
+    { id: 4, title: "Dynamic Programming", description: "Tackle DP problems step by step." },
+    { id: 5, title: "Sorting & Searching", description: "Explore classic sorting and searching algorithms." },
+  ];
+
+  const [query, setQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0); // For keyboard navigation
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Filtered/categorized results
+  const filteredProblems = query.trim()
+    ? problems.filter(
+        (p) =>
+          (p.title && p.title.toLowerCase().includes(query.toLowerCase())) ||
+          (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
+      ).slice(0, 5)
+    : [];
+  const filteredRoadmap = query.trim()
+    ? roadmapTopics.filter(
+        (t) =>
+          t.title.toLowerCase().includes(query.toLowerCase()) ||
+          t.description.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 3)
+    : [];
+  const filteredFaqs = query.trim()
+    ? faqs.filter(
+        (f) =>
+          f.question.toLowerCase().includes(query.toLowerCase()) ||
+          f.answer.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 3)
+    : [];
+  const filteredReviews = query.trim()
+    ? reviews.filter(
+        (r) =>
+          r.body.toLowerCase().includes(query.toLowerCase()) ||
+          r.name.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 3)
+    : [];
+
+  // Flatten for keyboard navigation
+  const categorizedResults = [
+    ...filteredProblems.map((item) => ({ type: "problem", item })),
+    ...filteredRoadmap.map((item) => ({ type: "roadmap", item })),
+    ...filteredFaqs.map((item) => ({ type: "faq", item })),
+    ...filteredReviews.map((item) => ({ type: "review", item })),
+  ];
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearch(false);
+      }
+    }
+    if (showSearch) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSearch]);
+
+  // Keyboard navigation
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showSearch || categorizedResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % categorizedResults.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + categorizedResults.length) % categorizedResults.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const res = categorizedResults[activeIndex];
+      if (res) {
+        if (res.type === "problem") {
+          window.location.href = `/problems/${res.item.id}`;
+        } else if (res.type === "roadmap") {
+          window.location.href = "/roadmap";
+        } else if (res.type === "faq") {
+          setShowSearch(false);
+        } else if (res.type === "review") {
+          setShowSearch(false);
+        }
+      }
+    } else if (e.key === "Escape") {
+      setShowSearch(false);
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-12">
       {/* Header with Top-Right Additions */}
@@ -388,49 +487,141 @@ export default function Home() {
             preparation
           </p>
         </div>
+        {/* Simple Search Bar (Global) */}
+        <div ref={searchRef} className="w-full sm:w-72 max-w-md ml-auto mt-2 sm:mt-0">
+          <div className="relative">
+            <input
+              type="text"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setShowSearch(true); setActiveIndex(0); }}
+              onFocus={() => setShowSearch(true)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search..."
+              className="w-full px-5 py-2 pr-10 rounded-xl border border-primary dark:border-primary shadow text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors"
+              aria-label="Global search"
+              style={{ boxShadow: '0 2px 12px 0 rgba(0,0,0,0.04)' }}
+              autoComplete="off"
+            />
+            {/* Clear (X) button when typing */}
+            {query && (
+              <button
+                type="button"
+                className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 focus:outline-none"
+                aria-label="Clear search"
+                tabIndex={0}
+                onClick={() => { setQuery(""); setShowSearch(false); setActiveIndex(0); }}
+                style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24">
+                  <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M6 6l12 12M6 18L18 6" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 focus:outline-none"
+              aria-label="Search"
+              tabIndex={0}
+              onClick={() => setShowSearch(true)}
+              style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M20 20l-3.5-3.5" />
+              </svg>
+            </button>
+            {showSearch && query && (
+              <div className="absolute mt-2 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
+                {categorizedResults.length === 0 ? (
+                  <div className="p-4 text-gray-500 dark:text-gray-400 text-sm">No results found.</div>
+                ) : (
+                  <>
+                    {/* Problems Category */}
+                    {filteredProblems.length > 0 && (
+                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-blue-100 dark:border-blue-900/30 px-4 pt-2 pb-1">
+                        <div className="text-xs font-bold text-blue-700 dark:text-blue-300 tracking-wide uppercase">Problems</div>
+                      </div>
+                    )}
+                    {filteredProblems.map((p, i) => (
+                      <a
+                        key={p.id}
+                        href={`/problems/${p.id}`}
+                        className={`block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm text-blue-900 dark:text-blue-200 transition-colors rounded ${activeIndex === i ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                        tabIndex={-1}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        style={{ borderBottom: i === filteredProblems.length - 1 && (filteredRoadmap.length > 0 || filteredFaqs.length > 0 || filteredReviews.length > 0) ? '1px solid #e0e7ef' : undefined }}
+                      >
+                        {p.title}
+                      </a>
+                    ))}
+                    {filteredProblems.length > 0 && (filteredRoadmap.length > 0 || filteredFaqs.length > 0 || filteredReviews.length > 0) && (
+                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                    )}
 
-        <div className="flex items-center gap-4 ml-auto mt-2">
-          <div
-            className="flex items-center gap-1 text-sm text-orange-500 font-medium cursor-pointer relative"
-            title="Your streak increases each day you visit AlgoAce. If you visit on consecutive days, your streak grows! Missing a day resets your streak."
-            onClick={() => setShowCalendar((prev) => !prev)}
-            tabIndex={0}
-            onBlur={e => {
-              // Only close if focus leaves the calendar popup
-              setTimeout(() => {
-                if (calendarRef.current && !calendarRef.current.contains(document.activeElement)) {
-                  setShowCalendar(false);
-                }
-              }, 100);
-            }}
-          >
-            🔥 <span>{streak}-day streak</span>
-            {showCalendar && (
-              <div ref={calendarRef} className="absolute top-8 right-0 z-50 bg-white border border-orange-300 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in">
-                <div className="font-semibold text-orange-700 mb-2 text-center">Your Activity This Month</div>
-                <MiniCalendar activityDates={activityDates} />
+                    {/* Roadmap Category */}
+                    {filteredRoadmap.length > 0 && (
+                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-purple-100 dark:border-purple-900/30 px-4 pt-2 pb-1">
+                        <div className="text-xs font-bold text-purple-700 dark:text-purple-300 tracking-wide uppercase">Roadmap</div>
+                      </div>
+                    )}
+                    {filteredRoadmap.map((t, i) => (
+                      <a
+                        key={t.id}
+                        href="/roadmap"
+                        className={`block px-4 py-2 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm text-purple-900 dark:text-purple-200 transition-colors rounded ${activeIndex === filteredProblems.length + i ? 'bg-purple-50 dark:bg-purple-900/30' : ''}`}
+                        tabIndex={-1}
+                        onMouseEnter={() => setActiveIndex(filteredProblems.length + i)}
+                        style={{ borderBottom: i === filteredRoadmap.length - 1 && (filteredFaqs.length > 0 || filteredReviews.length > 0) ? '1px solid #ede9fe' : undefined }}
+                      >
+                        {t.title}
+                      </a>
+                    ))}
+                    {filteredRoadmap.length > 0 && (filteredFaqs.length > 0 || filteredReviews.length > 0) && (
+                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                    )}
+
+                    {/* FAQ Category */}
+                    {filteredFaqs.length > 0 && (
+                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-green-100 dark:border-green-900/30 px-4 pt-2 pb-1">
+                        <div className="text-xs font-bold text-green-700 dark:text-green-300 tracking-wide uppercase">FAQ</div>
+                      </div>
+                    )}
+                    {filteredFaqs.map((f, i) => (
+                      <div
+                        key={f.question}
+                        className={`block px-4 py-2 hover:bg-green-100 dark:hover:bg-green-900/40 text-sm text-green-900 dark:text-green-200 transition-colors rounded cursor-default ${activeIndex === filteredProblems.length + filteredRoadmap.length + i ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
+                        tabIndex={-1}
+                        onMouseEnter={() => setActiveIndex(filteredProblems.length + filteredRoadmap.length + i)}
+                        style={{ borderBottom: i === filteredFaqs.length - 1 && filteredReviews.length > 0 ? '1px solid #d1fae5' : undefined }}
+                      >
+                        <span className="font-semibold">Q:</span> {f.question}
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{f.answer}</div>
+                      </div>
+                    ))}
+                    {filteredFaqs.length > 0 && filteredReviews.length > 0 && (
+                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                    )}
+
+                    {/* Reviews Category */}
+                    {filteredReviews.length > 0 && (
+                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-orange-100 dark:border-orange-900/30 px-4 pt-2 pb-1">
+                        <div className="text-xs font-bold text-orange-700 dark:text-orange-300 tracking-wide uppercase">Reviews</div>
+                      </div>
+                    )}
+                    {filteredReviews.map((r, i) => (
+                      <div
+                        key={r.name + r.body}
+                        className={`block px-4 py-2 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm text-orange-900 dark:text-orange-200 transition-colors rounded cursor-default ${activeIndex === filteredProblems.length + filteredRoadmap.length + filteredFaqs.length + i ? 'bg-orange-50 dark:bg-orange-900/30' : ''}`}
+                        tabIndex={-1}
+                        onMouseEnter={() => setActiveIndex(filteredProblems.length + filteredRoadmap.length + filteredFaqs.length + i)}
+                      >
+                        <span className="font-semibold">{r.name}:</span> {r.body}
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
-          </div>
-          <button
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
-            onClick={handleRandomProblem}
-          >
-            🎲 Random Problem
-          </button>
-          <div className="flex flex-col items-start">
-            <button
-              className="bg-green-400 hover:bg-green-500 text-green-900 px-8 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition mb-1"
-              onClick={() => setTipIndex((prev) => prev + 1)}
-              title="Show another tip or advice"
-            >
-              💡 {getCurrentTip().type === 'tip' ? 'DSA Tip' : 'Interview Advice'}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-1.5 shadow w-70 text-center">
-                {getCurrentTip().text}
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -743,7 +934,7 @@ function MiniCalendar({ activityDates }: { activityDates: string[] }) {
     if (e) e.stopPropagation();
     setViewMonth(m => {
       if (m === 0) {
-        setViewYear(y => y - 1);
+        setViewYear((y: number) => y - 1);
         return 11;
       } else {
         return m - 1;
@@ -754,7 +945,7 @@ function MiniCalendar({ activityDates }: { activityDates: string[] }) {
     if (e) e.stopPropagation();
     setViewMonth(m => {
       if (m === 11) {
-        setViewYear(y => y + 1);
+        setViewYear((y: number) => y + 1);
         return 0;
       } else {
         return m + 1;
