@@ -533,15 +533,15 @@ export default function Home() {
             alt="AlgoBuddy Mascot"
             width={64}
             height={64}
-            className="rounded-full shadow-md border border-blue-800"
+            className="rounded-full shadow-md border border-primary"
           />
         </button>
       </div>
 
       {/* Chat Popup */}
       {showCoach && (
-        <div className="fixed bottom-24 right-4 w-80 bg-white border border-gray-200 shadow-lg rounded-lg flex flex-col z-50">
-          <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-t-lg flex justify-between items-center">
+        <div className="fixed bottom-24 right-4 w-80 bg-card border border-primary shadow-lg rounded-lg flex flex-col z-50">
+          <div className="bg-primary text-primary-foreground text-sm px-4 py-2 rounded-t-lg flex justify-between items-center">
             <span>🤖 AlgoBuddy</span>
             <button
               onClick={() => setShowCoach(false)}
@@ -551,11 +551,11 @@ export default function Home() {
             </button>
           </div>
           {/* Common topics as clickable chips with explanations on hover and pseudocode on click */}
-          <div className="flex flex-wrap gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100">
+          <div className="flex flex-wrap gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
             {commonTopics.map((topic) => (
               <button
                 key={topic.label}
-                className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition relative group"
+                className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition relative group"
                 onClick={() => {
                   setChatHistory((prev) => [
                     ...prev,
@@ -566,7 +566,7 @@ export default function Home() {
                 }}
               >
                 {topic.label}
-                <span className="hidden group-hover:block absolute left-0 top-8 z-10 w-56 bg-white border border-blue-200 text-xs text-gray-700 rounded p-2 shadow-lg">
+                <span className="hidden group-hover:block absolute left-0 top-8 z-10 w-56 bg-card border border-primary/20 text-xs text-primary rounded p-2 shadow-lg">
                   {topic.explanation}
                 </span>
               </button>
@@ -638,12 +638,12 @@ export default function Home() {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className="flex-1 px-3 py-2 text-sm border rounded-md border-blue-400 placeholder-grey-500 text-black"
+              className="flex-1 px-3 py-2 text-sm border rounded-md border-primary placeholder-grey-500 text-black dark:text-white"
               placeholder="Ask me something..."
             />
             <button
               onClick={handleSend}
-              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded-md"
+              className="bg-primary hover:bg-primary/80 text-primary-foreground text-sm px-3 py-1 rounded-md"
             >
               Send
             </button>
