@@ -1,6 +1,6 @@
 # AlgoAce
 
-AlgoAce is an AI-powered DSA (Data Structures and Algorithms) learning platform that provides personalized learning experiences, problem recommendations, and detailed explanations.
+AlgoAce is an AI-powered DSA (Data Structures and Algorithms) learning platform that provides personalized learning experiences, problem recommendations, detailed explanations and personalized feedback to help users with interview preparation.
 
 ## Project Structure
 
