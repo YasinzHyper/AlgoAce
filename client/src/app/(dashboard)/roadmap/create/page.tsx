@@ -7,6 +7,13 @@ import * as z from "zod"
 import { supabase } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
   Form,
   FormControl,
   FormField,
@@ -23,11 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Toaster, toast } from "sonner"
-import { redirect, useRouter } from 'next/navigation'
-import { CalendarIcon } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import { CalendarIcon, Plus, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { PageHeader } from "@/components/layout/page-header"
 import { cn } from "@/utils/supabase/utils"
 
 const knowledgeSchema = z.object({
@@ -120,68 +128,174 @@ export default function CreateRoadmapPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Create New Roadmap</h1>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="goal"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Goal</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Prepare for an SDE internship" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="deadline"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Deadline</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <Toaster />
+      <PageHeader
+        title="Create New Roadmap"
+        description="Tell us about your goal, current knowledge, and time budget — we'll generate a personalized plan."
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Roadmap details</CardTitle>
+          <CardDescription>
+            All fields help tailor the generated plan to your situation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="goal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Goal</FormLabel>
                     <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[280px] justify-start text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                      </Button>
+                      <Input
+                        placeholder="e.g., Prepare for an SDE internship"
+                        {...field}
+                      />
                     </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div>
-            <FormLabel>Current Knowledge</FormLabel>
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex items-center space-x-2 mt-2">
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="deadline"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Deadline</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal sm:w-[280px]",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 size-4" />
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-auto p-0"
+                        align="start"
+                        sideOffset={6}
+                      >
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          autoFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-3">
+                <FormLabel>Current Knowledge</FormLabel>
+                <div className="space-y-3">
+                  {fields.map((f, index) => (
+                    <div
+                      key={f.id}
+                      className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-start"
+                    >
+                      <FormField
+                        control={form.control}
+                        name={`current_knowledge.${index}.topic`}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input
+                                placeholder="Topic (e.g., Graphs)"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`current_knowledge.${index}.level`}
+                        render={({ field }) => (
+                          <FormItem className="sm:w-44">
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Level" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Basic">Basic</SelectItem>
+                                <SelectItem value="Intermediate">
+                                  Intermediate
+                                </SelectItem>
+                                <SelectItem value="Advanced">
+                                  Advanced
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        disabled={fields.length === 1}
+                        aria-label="Remove knowledge area"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => append({ topic: "", level: "Basic" })}
+                >
+                  <Plus className="size-4" />
+                  Add knowledge area
+                </Button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name={`current_knowledge.${index}.topic`}
+                  name="weekly_hours"
                   render={({ field }) => (
-                    <FormItem className="flex-1">
+                    <FormItem>
+                      <FormLabel>Weekly Hours</FormLabel>
                       <FormControl>
-                        <Input placeholder="Topic (e.g., Graphs)" {...field} />
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -189,86 +303,43 @@ export default function CreateRoadmapPage() {
                 />
                 <FormField
                   control={form.control}
-                  name={`current_knowledge.${index}.level`}
+                  name="weeks"
                   render={({ field }) => (
                     <FormItem>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Basic">Basic</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Weeks</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
+              <div className="flex items-center justify-end gap-2 border-t pt-4">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => remove(index)}
-                  disabled={fields.length === 1}
+                  variant="ghost"
+                  onClick={() => router.push("/roadmap")}
+                  disabled={loading}
                 >
-                  Remove
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Generating..." : "Generate Roadmap"}
                 </Button>
               </div>
-            ))}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => append({ topic: "", level: "Basic" })}
-              className="mt-2"
-            >
-              Add Knowledge Area
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="weekly_hours"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Weekly Hours</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="weeks"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Weeks</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      max={20}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Generating..." : "Generate Roadmap"}
-          </Button>
-        </form>
-      </Form>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -7,13 +7,49 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Target, Clock, BookOpen, Code2 } from "lucide-react";
-import { ActivityCalendar } from "react-activity-calendar"; // Importing the calendar component
-import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Trophy, Target, Clock, BookOpen, Code2, Camera, Image as ImageIcon, Trash2 } from "lucide-react";
+import { ActivityCalendar } from "react-activity-calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTheme } from "next-themes";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/layout/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
+
+// Generate a year of mock activity data (GitHub-style contribution graph)
+function generateActivityData() {
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(end.getFullYear() - 1);
+  start.setDate(start.getDate() + 1);
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const rand = Math.random();
+    const count = rand < 0.55 ? 0 : rand < 0.75 ? 1 : rand < 0.88 ? 2 : rand < 0.96 ? 3 : 5;
+    days.push({
+      date: d.toISOString().slice(0, 10),
+      count,
+      level: count === 0 ? 0 : Math.min(4, count),
+    });
+  }
+  return days;
+}
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const activityData = useMemo(generateActivityData, []);
+  const totalContributions = useMemo(
+    () => activityData.reduce((sum, d) => sum + d.count, 0),
+    [activityData]
+  );
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
@@ -114,13 +150,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-40" />
         <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <Skeleton className="h-20 w-20 rounded-full" />
               <div className="space-y-2">
@@ -130,25 +163,18 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Not Signed In</CardTitle>
@@ -159,41 +185,59 @@ export default function ProfilePage() {
     );
   }
 
+  const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Profile Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Your personal information</CardDescription>
-        </CardHeader>
+    <div className="space-y-8">
+      <PageHeader
+        title="Profile"
+        description="Your account, progress, and achievements in one place."
+      />
+
+      {/* Profile Header Card */}
+      <Card className="animate-fade-in-up">
         <CardContent>
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20" onClick={() => {
-              const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
-              if (currentPhoto) {
-                setPendingPhoto(currentPhoto);
-                setIsPreviewOnly(true);
-                setShowPhotoModal(true);
-              }
-            }} style={{ cursor: (pendingPhoto || photoPreview || user.user_metadata?.avatar_url) ? 'pointer' : 'default' }}>
-              <AvatarImage src={pendingPhoto || photoPreview || user.user_metadata?.avatar_url} alt={user.email} />
-              <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <Avatar
+              className="size-20 cursor-pointer ring-2 ring-border ring-offset-2 ring-offset-background transition-all hover:ring-primary/60"
+              onClick={() => {
+                if (currentPhoto) {
+                  setPendingPhoto(currentPhoto);
+                  setIsPreviewOnly(true);
+                  setShowPhotoModal(true);
+                }
+              }}
+            >
+              <AvatarImage src={currentPhoto} alt={user.email} />
+              <AvatarFallback className="text-xl">{user.email?.[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="text-lg font-semibold">{user.email}</h3>
-              <p className="text-sm text-muted-foreground">Member since {new Date(user.created_at).toLocaleDateString()}</p>
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" variant="outline" onClick={handleTakePhoto}>Take Photo</Button>
-                <Button size="sm" variant="outline" onClick={handleUploadClick}>Upload from Gallery</Button>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="space-y-0.5">
+                <h3 className="truncate text-lg font-semibold leading-tight">{user.email}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Member since {new Date(user.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={handleTakePhoto}>
+                  <Camera className="size-4" />
+                  Take photo
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleUploadClick}>
+                  <ImageIcon className="size-4" />
+                  Upload
+                </Button>
                 {(photoPreview || pendingPhoto) && (
-                  <Button size="sm" variant="destructive" onClick={handleDiscardExistingPhoto}>Discard Photo</Button>
+                  <Button size="sm" variant="ghost" onClick={handleDiscardExistingPhoto} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="size-4" />
+                    Remove
+                  </Button>
                 )}
                 <input
                   type="file"
                   accept="image/*"
                   ref={fileInputRef}
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={handleFileChange}
                 />
               </div>
@@ -201,95 +245,108 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
-      {/* Webcam Modal & Save/Discard */}
-      {showPhotoModal && (
-        <div className={isPreviewOnly ? "fixed inset-0 z-50 flex items-center justify-center bg-black/60" : "fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/10"}>
-          {isPreviewOnly ? (
+
+      {/* Photo capture / upload dialog */}
+      <Dialog
+        open={showPhotoModal && !isPreviewOnly}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (videoRef.current && videoRef.current.srcObject) {
+              (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+            }
+            setShowPhotoModal(false);
+            setPendingPhoto(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingPhoto ? "Confirm photo" : "Take a photo"}</DialogTitle>
+          </DialogHeader>
+          {!pendingPhoto ? (
             <>
-              <button
-                onClick={() => {
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                className="aspect-video w-full rounded-lg border bg-muted object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  if (videoRef.current && videoRef.current.srcObject) {
+                    (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+                  }
                   setShowPhotoModal(false);
-                  setIsPreviewOnly(false);
-                  setPendingPhoto(null);
-                }}
-                className="absolute top-6 right-8 text-white hover:text-gray-300 text-4xl font-bold focus:outline-none z-50"
-                aria-label="Close preview"
-              >
-                ×
-              </button>
-              <img src={pendingPhoto ?? undefined} alt="Preview" className="max-w-[90vw] max-h-[90vh] rounded-lg object-contain shadow-xl z-40" />
+                }}>Cancel</Button>
+                <Button onClick={handleCapture}>
+                  <Camera className="size-4" />
+                  Capture
+                </Button>
+              </DialogFooter>
             </>
           ) : (
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full flex flex-col items-center relative">
-              {!pendingPhoto ? (
-                <>
-                  <video ref={videoRef} autoPlay className="w-64 h-48 rounded mb-4 bg-black" />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  <Button onClick={handleCapture} className="mb-2 w-full">Capture</Button>
-                  <Button variant="outline" onClick={() => {
-                    setShowPhotoModal(false);
-                    if (videoRef.current && videoRef.current.srcObject) {
-                      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-                    }
-                  }} className="w-full">Cancel</Button>
-                </>
-              ) : (
-                <>
-                  <img src={pendingPhoto} alt="Preview" className="w-64 h-48 rounded mb-4 object-cover" />
-                  <div className="flex gap-2 w-full">
-                    <Button onClick={handleSavePhoto} className="w-1/2 bg-green-600 hover:bg-green-700 text-white" variant="default">Save</Button>
-                    <Button onClick={handleDiscardPhoto} className="w-1/2 bg-red-600 hover:bg-red-700 text-white" variant="destructive">Discard</Button>
-                  </div>
-                </>
-              )}
-            </div>
+            <>
+              <img
+                src={pendingPhoto}
+                alt="Preview"
+                className="aspect-video w-full rounded-lg border object-cover"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={handleDiscardPhoto}>Discard</Button>
+                <Button onClick={handleSavePhoto}>Save photo</Button>
+              </DialogFooter>
+            </>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview-only dialog */}
+      <Dialog
+        open={showPhotoModal && isPreviewOnly}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowPhotoModal(false);
+            setIsPreviewOnly(false);
+            setPendingPhoto(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Profile photo</DialogTitle>
+          </DialogHeader>
+          <img
+            src={pendingPhoto ?? undefined}
+            alt="Profile"
+            className="max-h-[70vh] w-full rounded-lg object-contain"
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Stats Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Progress</CardTitle>
-          <CardDescription>Track your learning journey</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  <div>
-                    <p className="text-sm font-medium">Problems Solved</p>
-                    <p className="text-2xl font-bold">24</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-blue-500" />
-                  <div>
-                    <p className="text-sm font-medium">Current Streak</p>
-                    <p className="text-2xl font-bold">5 days</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="text-sm font-medium">Total Time</p>
-                    <p className="text-2xl font-bold">12h 30m</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          title="Problems Solved"
+          value={24}
+          icon={Trophy}
+          sparkle
+          trend={{ value: "+3 this week", positive: true }}
+        />
+        <StatCard
+          title="Current Streak"
+          value="5 days"
+          icon={Target}
+          sparkle
+          description="vs 4 last week"
+        />
+        <StatCard
+          title="Total Time"
+          value="12h 30m"
+          icon={Clock}
+          description="all time"
+        />
+      </div>
 
       {/* Detailed Progress */}
       <Card>
@@ -408,34 +465,45 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Calendar Heatmap */}
+      {/* Contribution Graph (GitHub-style) */}
       <Card>
         <CardHeader>
-          <CardTitle>Activity Over Time</CardTitle>
-          <CardDescription>Your daily activity</CardDescription>
+          <CardTitle>{totalContributions} contributions in the last year</CardTitle>
+          <CardDescription>Problems solved per day</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <ActivityCalendar
-            data={[
-              { date: '2025-06-01', count: 1, level: 1 },
-              { date: '2025-06-02', count: 2, level: 2 },
-                            { date: '2025-06-03', count: 3, level: 3 },
-              { date: '2025-06-04', count: 0, level: 0 },
-              { date: '2025-06-05', count: 1, level: 1 },
-              // Add more activity data as needed
-            ]}
-            labels={{
-              legend: {
-                less: 'Less',
-                more: 'More',
-              },
-              months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-              weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-            }}
+            data={activityData}
+            blockSize={11}
+            blockMargin={3}
+            blockRadius={2}
+            fontSize={11}
+            maxLevel={4}
+            colorScheme={resolvedTheme === "dark" ? "dark" : "light"}
             theme={{
-              light: ['#ebedf0', '#c6e48b', '#7bc96f', '#239a3b', '#196127'],
+              light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+              dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+            }}
+            labels={{
+              legend: { less: "Less", more: "More" },
+              totalCount: "{{count}} contributions in the last year",
             }}
             showWeekdayLabels
+            hideTotalCount
+            renderBlock={(block, activity) => (
+              <Tooltip>
+                <TooltipTrigger asChild>{block}</TooltipTrigger>
+                <TooltipContent>
+                  {activity.count === 0 ? "No" : activity.count}{" "}
+                  {activity.count === 1 ? "contribution" : "contributions"} on{" "}
+                  {new Date(activity.date).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </TooltipContent>
+              </Tooltip>
+            )}
           />
         </CardContent>
       </Card>

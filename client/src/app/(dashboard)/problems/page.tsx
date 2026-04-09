@@ -4,12 +4,19 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/utils/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Toaster, toast } from 'sonner'
 import RoadmapSelector from '@/components/problems/RoadmapSelector'
 import ProblemCard from '@/components/problems/ProblemCard'
 import WeekPagination from '@/components/problems/WeekPagination'
+import { PageHeader } from '@/components/layout/page-header'
+import { EmptyState } from '@/components/layout/empty-state'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { Map, Search, SearchX } from 'lucide-react'
 
 // Define interfaces for raw problem data and transformed problem details
 interface RawProblemData {
@@ -163,92 +170,137 @@ export default function ProblemsPage() {
     return matchesSearch && matchesDifficulty && matchesTopic
   })
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>
-  if (!selectedRoadmap) return <div className="p-6 text-center">No roadmaps found</div>
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Problems" description="Loading your weekly problem set..." />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-  // Define weekTask and otherTopics to handle undefined cases safely
-  const weekTask = tasks.find(task => task.week === currentWeek);
-  const otherTopics = weekTask ? weekTask.other_topics : [];
+  if (!selectedRoadmap) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Problems" />
+        <EmptyState
+          icon={Map}
+          title="No roadmap selected"
+          description="Create a roadmap to unlock a personalized week-by-week problem set."
+          action={
+            <Button asChild>
+              <Link href="/roadmap/create">Create roadmap</Link>
+            </Button>
+          }
+        />
+      </div>
+    )
+  }
+
+  const weekTask = tasks.find(task => task.week === currentWeek)
+  const otherTopics = weekTask ? weekTask.other_topics : []
 
   return (
-    <div className="p-6">
+    <div className="space-y-8">
       <Toaster />
-      <h1 className="text-3xl font-bold mb-6">Problems Dashboard</h1>
-
-      {/* Roadmap Selector */}
-      <RoadmapSelector
-        roadmaps={roadmaps}
-        selectedRoadmap={selectedRoadmap}
-        onSelect={(roadmap) => {
-          setSelectedRoadmap(roadmap)
-          setCurrentWeek(1)
-        }}
+      <PageHeader
+        title="Problems"
+        description="Work through your roadmap one week at a time."
+        actions={
+          <RoadmapSelector
+            roadmaps={roadmaps}
+            selectedRoadmap={selectedRoadmap}
+            onSelect={(roadmap) => {
+              setSelectedRoadmap(roadmap)
+              setCurrentWeek(1)
+            }}
+          />
+        }
       />
 
-      {/* Filters and Problems for Current Week */}
-      <Card className="mt-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Week {currentWeek} Problems</CardTitle>
-            <div className="flex items-center gap-4">
+      <Card>
+        <CardHeader className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CardTitle>Week {currentWeek}</CardTitle>
+              <Badge variant="secondary">
+                {filteredProblems.length} of {currentWeekProblems.length}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search problems..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-[300px]"
+                className="pl-9"
               />
-              <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Difficulties</SelectItem>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={topicFilter} onValueChange={setTopicFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Topic" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Topics</SelectItem>
-                  <SelectItem value="arrays">Arrays</SelectItem>
-                  <SelectItem value="hash table">Hash Table</SelectItem>
-                  <SelectItem value="linked list">Linked List</SelectItem>
-                  <SelectItem value="string">String</SelectItem>
-                  <SelectItem value="dynamic programming">Dynamic Programming</SelectItem>
-                  <SelectItem value="math">Math</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
+            <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+              <SelectTrigger className="md:w-[170px]">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All difficulties</SelectItem>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={topicFilter} onValueChange={setTopicFilter}>
+              <SelectTrigger className="md:w-[190px]">
+                <SelectValue placeholder="Topic" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All topics</SelectItem>
+                <SelectItem value="arrays">Arrays</SelectItem>
+                <SelectItem value="hash table">Hash Table</SelectItem>
+                <SelectItem value="linked list">Linked List</SelectItem>
+                <SelectItem value="string">String</SelectItem>
+                <SelectItem value="dynamic programming">Dynamic Programming</SelectItem>
+                <SelectItem value="math">Math</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {filteredProblems.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredProblems.map((problem) => (
                 <ProblemCard key={problem.id} problem={problem} />
               ))}
             </div>
           ) : (
-            <p className="text-gray-500">No problems match the current filters.</p>
+            <EmptyState
+              icon={SearchX}
+              title="No problems match your filters"
+              description="Try clearing your search or selecting a different difficulty."
+              className="border-0 bg-transparent p-8"
+            />
           )}
           {otherTopics.length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-semibold text-white-700">Other Topics:</h4>
-              <ul className="list-disc pl-5 text-white-600">
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <h4 className="mb-2 text-sm font-semibold">
+                Additional topics this week
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
                 {otherTopics.map((topic, idx) => (
-                  <li key={idx}>{topic}</li>
+                  <Badge key={idx} variant="outline">
+                    {topic}
+                  </Badge>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Week Pagination */}
       <WeekPagination
         totalWeeks={selectedRoadmap.user_input.weeks}
         currentWeek={currentWeek}

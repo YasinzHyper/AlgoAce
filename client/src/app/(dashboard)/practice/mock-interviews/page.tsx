@@ -1,10 +1,30 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { PageHeader } from '@/components/layout/page-header';
 import Link from 'next/link';
-import { FiPlay, FiPause, FiRotateCw, FiCamera, FiCameraOff } from 'react-icons/fi';
+import {
+  Camera,
+  CameraOff,
+  Pause,
+  Play,
+  RotateCcw,
+  Timer,
+  Video,
+} from 'lucide-react';
 
 // Custom Hook for Shake Detection
 export function useShakeDetector(videoRef: React.RefObject<HTMLVideoElement | null>, onShake: () => void) {
@@ -167,163 +187,241 @@ export default function MockInterviewsPage() {
     }
   };
 
+  const formatTime = (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Mock Interviews</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Mock Interviews"
+        description="Simulate a real interview scenario with timed prompts and optional live camera."
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Start a Mock Interview</CardTitle>
-          <CardDescription>Simulate a real interview scenario</CardDescription>
+          <CardDescription>
+            Pick the format, difficulty, and session length, then jump in.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-4 md:flex-row md:gap-8">
-              <div className="flex-1">
-                <label htmlFor="interview-type" className="block text-sm font-medium mb-2">Interview Type</label>
-                <select
-                  id="interview-type"
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
-                >
-                  <option value="technical">Technical</option>
-                  <option value="behavioral">Behavioral</option>
-                  <option value="system-design">System Design</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label htmlFor="difficulty-level" className="block text-sm font-medium mb-2">Difficulty Level</label>
-                <select
-                  id="difficulty-level"
-                  value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
-                >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-              </div>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="interview-type">Interview type</Label>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger id="interview-type" className="w-full">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technical">Technical</SelectItem>
+                  <SelectItem value="behavioral">Behavioral</SelectItem>
+                  <SelectItem value="system-design">System Design</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {/* Timer quick select - fancier UI */}
-            <div className="flex flex-wrap gap-2 mb-2 items-center">
+            <div className="space-y-2">
+              <Label htmlFor="difficulty-level">Difficulty level</Label>
+              <Select
+                value={selectedDifficulty}
+                onValueChange={setSelectedDifficulty}
+              >
+                <SelectTrigger id="difficulty-level" className="w-full">
+                  <SelectValue placeholder="Select difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="beginner">Beginner</SelectItem>
+                  <SelectItem value="intermediate">Intermediate</SelectItem>
+                  <SelectItem value="advanced">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Session length</Label>
+            <div className="flex flex-wrap items-center gap-2">
               {timerOptions.map((min) => (
                 <Button
                   key={min}
-                  variant={timer === min * 60 ? 'default' : 'outline'}
+                  type="button"
+                  variant={timer === min * 60 ? "default" : "outline"}
                   onClick={() => handleTimerSelect(min)}
-                  className={`rounded-full px-6 py-2 font-semibold transition-all duration-150 ${timer === min * 60 ? 'ring-2 ring-indigo-400' : ''}`}
+                  className="rounded-full"
                 >
                   {min} min
                 </Button>
               ))}
-              <div className="relative">
-                <input
+              <div className="relative w-32">
+                <Input
                   type="number"
-                  min="1"
+                  min={1}
                   placeholder="Custom"
                   value={customMinutes}
                   onChange={handleCustomInput}
-                  className="w-32 px-3 py-2 rounded-full border border-gray-300 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center appearance-none"
-                  style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                  className="rounded-full pr-10 text-center"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">min</span>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  min
+                </span>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={startTimer} disabled={timerActive || timer === 0}>
-                {timerActive ? (
-                  <><FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Running...</span></>
-                ) : (!hasStarted ? (
-                  <><FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Start Timer</span></>
-                ) : (
-                  <><FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Resume</span></>
-                ))}
-              </Button>
-              <Button variant="outline" onClick={pauseTimer} disabled={!timerActive}>
-                <FiPause className="inline mr-1 text-blue-500" /> <span className="text-blue-600">Pause</span>
-              </Button>
-              <Button variant="outline" onClick={resetTimer}>
-                <FiRotateCw className="inline mr-1 text-red-500" /> <span className="text-red-600">Reset</span>
-              </Button>
-            </div>
-            <p className="text-lg font-bold">Time Remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</p>
-            <Link href="/practice/mock-interviews/session">
-              <Button variant="outline">Begin Interview</Button>
-            </Link>
           </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Timer className="size-5" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Time remaining
+                  </p>
+                  <p className="font-mono text-2xl font-bold tabular-nums">
+                    {formatTime(timer)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={startTimer}
+                  disabled={timerActive || timer === 0}
+                >
+                  <Play className="size-4" />
+                  {timerActive
+                    ? "Running"
+                    : !hasStarted
+                      ? "Start"
+                      : "Resume"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={pauseTimer}
+                  disabled={!timerActive}
+                >
+                  <Pause className="size-4" />
+                  Pause
+                </Button>
+                <Button variant="outline" onClick={resetTimer}>
+                  <RotateCcw className="size-4" />
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="border-t">
+          <Button asChild>
+            <Link href="/practice/mock-interviews/session">
+              <Video className="size-4" />
+              Begin interview
+            </Link>
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Camera */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Live camera</CardTitle>
+          <CardDescription>
+            Optional. Motion is monitored locally to remind you to stay calm —
+            no video is uploaded.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {cameraOn && !videoRef.current?.srcObject && !cameraError && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              Please allow camera access in your browser to enable this feature.
+            </div>
+          )}
+          {cameraError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {cameraError}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={handleCameraToggle}>
+              {cameraOn ? (
+                <>
+                  <CameraOff className="size-4" />
+                  Turn camera off
+                </>
+              ) : (
+                <>
+                  <Camera className="size-4" />
+                  Turn camera on
+                </>
+              )}
+            </Button>
+            <Badge variant={cameraOn ? "default" : "secondary"}>
+              {cameraOn ? "Motion monitored" : "Camera off"}
+            </Badge>
+          </div>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            className="aspect-video w-full max-w-md rounded-lg border bg-muted object-cover"
+            style={{ display: cameraOn ? "block" : "none" }}
+          />
         </CardContent>
       </Card>
 
-      {/* Add Camera */}
-      <div className="my-4">
-        {cameraOn && !videoRef.current?.srcObject && !cameraError && (
-          <div className="mb-2 text-yellow-400 text-sm">Please allow camera access in your browser to enable this feature.</div>
-        )}
-        {cameraError && (
-          <div className="mb-2 text-red-500 text-sm">{cameraError}</div>
-        )}
-        <div className="flex items-center gap-2 mb-2">
-          <Button variant="outline" onClick={handleCameraToggle}>
-            {cameraOn ? <><FiCameraOff className="inline mr-1" /> Turn Camera Off</> : <><FiCamera className="inline mr-1" /> Turn Camera On</>}
-          </Button>
-          <span className="text-sm text-gray-500">Camera {cameraOn ? 'On' : 'Off'} – Motion monitored</span>
-        </div>
-        <video ref={videoRef} autoPlay muted className="w-full max-w-md rounded-md border" style={{ display: cameraOn ? 'block' : 'none' }} />
-      </div>
-
       {/* Interview History */}
-      <h2 className="text-2xl font-bold mt-8">Interview History</h2>
       <Card>
         <CardHeader>
           <CardTitle>Past Interviews</CardTitle>
           <CardDescription>Review your previous mock interviews</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>Technical Interview</span>
-              <span>Score: 85</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Behavioral Interview</span>
-              <span>Score: 90</span>
-            </li>
-          </ul>
+        <CardContent className="divide-y">
+          <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+            <span className="font-medium">Technical Interview</span>
+            <Badge variant="secondary">Score 85</Badge>
+          </div>
+          <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+            <span className="font-medium">Behavioral Interview</span>
+            <Badge variant="secondary">Score 90</Badge>
+          </div>
         </CardContent>
       </Card>
 
       {/* Feedback */}
-      <h2 className="text-2xl font-bold mt-8">Feedback</h2>
       <Card>
         <CardHeader>
-          <CardTitle>Submit Feedback</CardTitle>
-          <CardDescription>Share your thoughts on the interview experience</CardDescription>
+          <CardTitle>Submit feedback</CardTitle>
+          <CardDescription>
+            Share your thoughts on the interview experience
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <textarea
-            className="w-full p-2 border rounded-md"
-            placeholder="Enter your feedback here..."
-            rows={4}
-          />
-          <Button variant="outline" className="mt-2">Submit Feedback</Button>
+        <CardContent className="space-y-3">
+          <Textarea placeholder="What worked well, what could be better..." rows={4} />
+          <Button variant="outline">Submit feedback</Button>
         </CardContent>
       </Card>
 
       {/* Resources */}
-      <h2 className="text-2xl font-bold mt-8">Resources</h2>
       <Card>
         <CardHeader>
-          <CardTitle>Interview Preparation</CardTitle>
-          <CardDescription>Helpful resources for interview preparation</CardDescription>
+          <CardTitle>Interview preparation</CardTitle>
+          <CardDescription>Helpful resources for your next session</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-1">
-            <li><Link href="#" className="text-blue-500 hover:underline">Interview Tips</Link></li>
-            <li><Link href="#" className="text-blue-500 hover:underline">Common Questions</Link></li>
-            <li><Link href="#" className="text-blue-500 hover:underline">Practice Problems</Link></li>
-          </ul>
+        <CardContent className="divide-y">
+          {[
+            { label: "Interview tips", href: "#" },
+            { label: "Common questions", href: "#" },
+            { label: "Practice problems", href: "/problems" },
+          ].map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className="flex items-center justify-between py-3 text-sm font-medium transition-colors first:pt-0 last:pb-0 hover:text-primary"
+            >
+              {link.label}
+              <span aria-hidden className="text-muted-foreground">→</span>
+            </Link>
+          ))}
         </CardContent>
       </Card>
     </div>

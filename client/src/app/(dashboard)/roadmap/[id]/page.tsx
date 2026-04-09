@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
 import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant, Handle, Position } from '@xyflow/react'
+import { useTheme } from 'next-themes'
 import { format } from 'date-fns'
 import '@xyflow/react/dist/style.css';
 
@@ -37,36 +38,34 @@ interface Roadmap {
 // Custom WeekNode component
 const WeekNode = ({ data }: { data: { week: number; topics: { category: string; items: [string, string][] }[] } }) => {
   return (
-    <div className="w-72 bg-gray-100 border rounded-lg shadow-md p-4">
-      {/* Handle for incoming edges (target) */}
+    <div className="w-72 rounded-lg border bg-card p-4 shadow-sm">
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#777' }} // Optional styling
+        className="!bg-muted-foreground"
       />
-      {/* Handle for outgoing edges (source) */}
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#777' }} // Optional styling
+        className="!bg-muted-foreground"
       />
-      <h3 className="text-lg font-bold text-gray-800 mb-3 text-center">Week {data.week}</h3>
+      <h3 className="text-lg font-bold mb-3 text-center">Week {data.week}</h3>
       {data.topics.map((section) => (
         <div key={section.category} className="mb-4">
-          <h4 className={`font-semibold ${section.category === 'DSA' ? 'text-blue-600' : 'text-green-600'}`}>
+          <h4 className={`font-semibold text-sm ${section.category === 'DSA' ? 'text-primary' : 'text-chart-2'}`}>
             {section.category}
           </h4>
-          <ul className="mt-1 space-y-1 text-sm text-gray-700">
+          <ul className="mt-1 space-y-1 text-sm">
             {section.items.map(([topic, level], idx) => (
               <li key={idx} className="flex justify-between items-center">
-                <span>{topic}</span>
+                <span className="text-foreground">{topic}</span>
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     level === 'Basic'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       : level === 'Intermediate'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                   }`}
                 >
                   {level}
@@ -90,6 +89,7 @@ const RoadmapDetailPage = () => {
   const [edges, setEdges] = useState<Edge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
     const fetchRoadmap = async () => {
@@ -129,7 +129,7 @@ const RoadmapDetailPage = () => {
           source: node.id,
           target: roadmapNodes[index + 1].id,
           type: ' ',
-          style: { stroke: '#b9d0e8', strokeWidth: 2},
+          style: { stroke: 'var(--border)', strokeWidth: 2 },
         }))
 
         // Log to debug
@@ -149,15 +149,15 @@ const RoadmapDetailPage = () => {
   }, [id])
 
   if (loading) {
-    return <div className="p-6 text-center text-gray-500">Loading roadmap...</div>
+    return <div className="p-6 text-center text-muted-foreground">Loading roadmap...</div>
   }
 
   if (error) {
-    return <div className="p-6 text-center text-red-500">Error: {error}</div>
+    return <div className="p-6 text-center text-destructive">Error: {error}</div>
   }
 
   if (!roadmap) {
-    return <div className="p-6 text-center text-gray-500">Roadmap not found</div>
+    return <div className="p-6 text-center text-muted-foreground">Roadmap not found</div>
   }
 
   const { goal, deadline, weeks, company } = roadmap.user_input
@@ -165,17 +165,17 @@ const RoadmapDetailPage = () => {
   return (
     <div className="h-full">
       {/* Roadmap Metadata */}
-      <div className="p-2 rounded-lg shadow-sm">
+      <div className="rounded-lg border bg-card p-4">
         <h1 className="text-2xl font-bold mb-2">{goal}</h1>
-        <p className="text-gray-500">
+        <p className="text-muted-foreground">
           Deadline: {deadline ? format(new Date(deadline), 'PPP') : 'Not specified'}
         </p>
-        <p className="text-gray-500">Duration: {weeks} weeks</p>
-        {company && <p className="text-gray-600">Company: {company}</p>}
+        <p className="text-muted-foreground">Duration: {weeks} weeks</p>
+        {company && <p className="text-muted-foreground">Company: {company}</p>}
       </div>
 
       {/* React Flow Visualization */}
-      <div style={{ width: '100%', height: '500px' }} className="rounded-lg shadow-sm overflow-hidden">
+      <div className="mt-4 h-[500px] w-full overflow-hidden rounded-lg border shadow-sm">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -187,10 +187,11 @@ const RoadmapDetailPage = () => {
           minZoom={0.2}
           maxZoom={2}
           fitView={false}
-          // colorMode='light'
+          colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
+          proOptions={{ hideAttribution: true }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={16} />
-          <Controls style={{color:"black"}}/>
+          <Background variant={BackgroundVariant.Dots} gap={16} color="var(--border)" />
+          <Controls />
         </ReactFlow>
       </div>
     </div>

@@ -1,136 +1,225 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import {
+  ArrowRight,
+  Clock,
+  Crown,
+  Gauge,
+  ListChecks,
+  Target,
+  Timer,
+  Trophy,
+  Video,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatCard } from "@/components/layout/stat-card";
+import { Meteors } from "@/components/magicui/meteors";
+import { Marquee } from "@/components/magicui/marquee";
+
+const practiceModes = [
+  {
+    title: "Mock Interviews",
+    description:
+      "Simulate a real technical interview with live camera and timed prompts.",
+    href: "/practice/mock-interviews",
+    icon: Video,
+    cta: "Start interview",
+    badge: "Recommended",
+  },
+  {
+    title: "Coding Challenges",
+    description:
+      "Sharpen your problem-solving with curated, timed challenges across difficulty levels.",
+    href: "/practice/challenges",
+    icon: Timer,
+    cta: "Start challenge",
+  },
+];
+
+const recommended = [
+  { id: 1, title: "Merge Intervals", difficulty: "Medium", duration: "30 min" },
+  { id: 2, title: "Valid Parentheses", difficulty: "Easy", duration: "15 min" },
+];
+
+const trendingTopics = [
+  "Arrays", "Hash Map", "Two Pointers", "Sliding Window", "Binary Search",
+  "Dynamic Programming", "Graphs", "Trees", "Heaps", "Backtracking", "Greedy",
+];
+
+const leaderboard = [
+  { rank: 1, name: "Alice", score: 95 },
+  { rank: 2, name: "Bob", score: 90 },
+  { rank: 3, name: "You", score: 85, self: true },
+];
 
 export default function PracticeOverviewPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Practice Overview</h1>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Mock Interviews</CardTitle>
-            <CardDescription>Simulate real interview scenarios</CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="space-y-8">
+      <PageHeader
+        title="Practice"
+        description="Sharpen your interview skills with mock sessions and timed challenges."
+        actions={
+          <Button asChild>
             <Link href="/practice/mock-interviews">
-              <Button variant="outline">Start Mock Interview</Button>
+              Quick start <ArrowRight className="size-4" />
             </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Coding Challenges</CardTitle>
-            <CardDescription>Practice with timed coding challenges</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/practice/challenges">
-              <Button variant="outline">Start Challenge</Button>
-            </Link>
-          </CardContent>
-        </Card>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 stagger-children md:grid-cols-2">
+        {practiceModes.map((mode) => (
+          <Card
+            key={mode.title}
+            className="group glide-border relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <Meteors number={10} />
+            <CardHeader className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <mode.icon className="size-5" />
+                </div>
+                {mode.badge && <Badge variant="secondary">{mode.badge}</Badge>}
+              </div>
+              <CardTitle className="mt-4">{mode.title}</CardTitle>
+              <CardDescription>{mode.description}</CardDescription>
+            </CardHeader>
+            <CardFooter className="relative">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={mode.href}>
+                  {mode.cta} <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
-      <h2 className="text-2xl font-bold mt-8">Practice Statistics</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Sessions</CardTitle>
-            <CardDescription>Number of practice sessions completed</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">15</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Average Duration</CardTitle>
-            <CardDescription>Average time spent per session</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">45 min</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Success Rate</CardTitle>
-            <CardDescription>Percentage of challenges completed successfully</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">80%</p>
-          </CardContent>
-        </Card>
-      </div>
-      <h2 className="text-2xl font-bold mt-8">Recent Activity</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Last Session</CardTitle>
-          <CardDescription>Details of your last practice session</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-lg">Mock Interview: System Design</p>
-          <p className="text-sm text-gray-500">Completed on: 2023-10-01</p>
-        </CardContent>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">Statistics</h2>
+        <div className="grid gap-4 stagger-children sm:grid-cols-3">
+          <StatCard title="Total Sessions" value={15} icon={ListChecks} description="all time" />
+          <StatCard title="Avg. Duration" value="45 min" icon={Clock} description="per session" />
+          <StatCard
+            title="Success Rate"
+            value="80%"
+            icon={Gauge}
+            sparkle
+            trend={{ value: "+6%", positive: true }}
+          />
+        </div>
+      </section>
+
+      {/* Trending topics marquee */}
+      <Card className="relative overflow-hidden border-dashed py-4">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-card to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-card to-transparent" />
+        <Marquee pauseOnHover className="[--duration:35s]">
+          {trendingTopics.map((topic) => (
+            <Badge key={topic} variant="secondary" className="px-3 py-1 text-sm">
+              {topic}
+            </Badge>
+          ))}
+        </Marquee>
+        <Marquee reverse pauseOnHover className="[--duration:30s]">
+          {trendingTopics.map((topic) => (
+            <Badge key={topic} variant="outline" className="px-3 py-1 text-sm">
+              {topic}
+            </Badge>
+          ))}
+        </Marquee>
       </Card>
-      <h2 className="text-2xl font-bold mt-8">Recommended Challenges</h2>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Challenge 1</CardTitle>
-            <CardDescription>Recommended based on your skill level</CardDescription>
+            <CardTitle>Recommended for you</CardTitle>
+            <CardDescription>Based on your recent performance</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Link href="/practice/challenges/1">
-              <Button variant="outline">Start Challenge</Button>
-            </Link>
+          <CardContent className="divide-y">
+            {recommended.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{c.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {c.difficulty} · {c.duration}
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="ghost">
+                  <Link href={`/practice/challenges/${c.id}`}>
+                    Start <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
+            ))}
           </CardContent>
+          <CardFooter className="border-t">
+            <Button asChild variant="link" className="px-0">
+              <Link href="/practice/challenges">View all challenges</Link>
+            </Button>
+          </CardFooter>
         </Card>
+
         <Card>
-          <CardHeader>
-            <CardTitle>Challenge 2</CardTitle>
-            <CardDescription>Recommended based on your skill level</CardDescription>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Leaderboard</CardTitle>
+              <CardDescription>This week&apos;s top performers</CardDescription>
+            </div>
+            <Trophy className="size-5 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <Link href="/practice/challenges/2">
-              <Button variant="outline">Start Challenge</Button>
-            </Link>
+            <ul className="space-y-1">
+              {leaderboard.map((entry) => (
+                <li
+                  key={entry.rank}
+                  className={`flex items-center justify-between rounded-md px-3 py-2 text-sm ${
+                    entry.self
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                      {entry.rank}
+                    </span>
+                    {entry.name}
+                    {entry.rank === 1 && <Crown className="size-3.5 text-amber-500" />}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">{entry.score}</span>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       </div>
-      <h2 className="text-2xl font-bold mt-8">Practice Goals</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Set Your Goals</CardTitle>
-          <CardDescription>Define your practice goals for the week</CardDescription>
+
+      <Card className="border-dashed">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Weekly goals</CardTitle>
+            <CardDescription>Define targets to stay on track</CardDescription>
+          </div>
+          <Target className="size-5 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
-          <Button variant="outline">Set Goals</Button>
-        </CardContent>
-      </Card>
-      <h2 className="text-2xl font-bold mt-8">Leaderboard</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Performers</CardTitle>
-          <CardDescription>See who's leading the practice sessions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>User 1</span>
-              <span>Score: 95</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 2</span>
-              <span>Score: 90</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 3</span>
-              <span>Score: 85</span>
-            </li>
-          </ul>
-        </CardContent>
+        <CardFooter>
+          <Button variant="outline">Set goals</Button>
+        </CardFooter>
       </Card>
     </div>
   );
-} 
+}
