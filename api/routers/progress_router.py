@@ -183,7 +183,7 @@ async def generate_feedback(task_id: int, user=Depends(get_current_user)):
 
         # Call Gemini API
         response = client.models.generate_content(
-            model="gemini-2.5-flash-preview-04-17",
+            model="gemini-2.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="You are an expert tutor providing personalized feedback on learning progress.",

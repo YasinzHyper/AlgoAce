@@ -185,6 +185,17 @@ export default function ProblemsPage() {
         }}
       />
 
+      {/* Week Pagination (Top) */}
+      {selectedRoadmap && (
+        <div className="mb-4">
+          <WeekPagination
+            totalWeeks={selectedRoadmap.user_input.weeks}
+            currentWeek={currentWeek}
+            onWeekChange={setCurrentWeek}
+          />
+        </div>
+      )}
+
       {/* Filters and Problems for Current Week */}
       <Card className="mt-6">
         <CardHeader>

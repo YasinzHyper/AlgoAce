@@ -125,10 +125,10 @@ const RoadmapCard = ({ roadmap, onDelete }: { roadmap: any, onDelete: (id: numbe
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 items-center">
           <Link href={`/roadmap/${roadmap.id}`} className="w-full">
-            <Button variant="default" className="w-full cursor-pointer bg-green-500 hover:bg-green-600 text-white">View</Button>
+            <Button variant="ghost" className="w-full cursor-pointer bg-green-500 hover:bg-green-600 text-white">View</Button>
           </Link>
           <Link href={`/problems?roadmap=${roadmap.id}`} className="w-full">
-            <Button variant="secondary" className="w-full cursor-pointer">Problems</Button>
+            <Button variant="outline" className="w-full cursor-pointer">Problems</Button>
           </Link>
           <AlertDialog>
             <AlertDialogTrigger asChild>
