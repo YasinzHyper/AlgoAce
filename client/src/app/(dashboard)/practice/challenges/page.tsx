@@ -1,10 +1,29 @@
 'use client';
 
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
 import Link from "next/link";
-import { FiPlay, FiPause, FiRotateCw } from "react-icons/fi";
+import { Pause, Play, RotateCcw, Timer, Trophy } from "lucide-react";
 
 export default function CodingChallengesPage() {
   const [selectedCategory, setSelectedCategory] = useState("algorithms");
@@ -69,180 +88,229 @@ export default function CodingChallengesPage() {
     }
   };
 
+  const formatTime = (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, "0")}`;
+
+  const leaderboard = [
+    { rank: 1, name: "User 1", score: 95 },
+    { rank: 2, name: "User 2", score: 90 },
+    { rank: 3, name: "User 3", score: 85 },
+  ];
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Coding Challenges</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Coding Challenges"
+        description="Sharpen your skills with timed, curated coding challenges."
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Start a Challenge</CardTitle>
-          <CardDescription>Practice with timed coding challenges</CardDescription>
+          <CardDescription>
+            Choose a category, difficulty, and session length.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-4 md:flex-row md:gap-8">
-              <div className="flex-1">
-                <label htmlFor="challenge-category" className="block text-sm font-medium mb-2">Challenge Category</label>
-                <select
-                  id="challenge-category"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
-                >
-                  <option value="algorithms">Algorithms</option>
-                  <option value="data-structures">Data Structures</option>
-                  <option value="system-design">System Design</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label htmlFor="difficulty-level" className="block text-sm font-medium mb-2">Difficulty Level</label>
-                <select
-                  id="difficulty-level"
-                  value={selectedDifficulty}
-                  onChange={(e) => setSelectedDifficulty(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-800 text-white px-4 py-3 text-base"
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="challenge-category">Challenge category</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
+                <SelectTrigger id="challenge-category" className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="algorithms">Algorithms</SelectItem>
+                  <SelectItem value="data-structures">Data Structures</SelectItem>
+                  <SelectItem value="system-design">System Design</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {/* Timer quick select - fancier UI */}
-            <div className="flex flex-wrap gap-2 mb-2 items-center">
+            <div className="space-y-2">
+              <Label htmlFor="challenge-difficulty">Difficulty level</Label>
+              <Select
+                value={selectedDifficulty}
+                onValueChange={setSelectedDifficulty}
+              >
+                <SelectTrigger id="challenge-difficulty" className="w-full">
+                  <SelectValue placeholder="Select difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Session length</Label>
+            <div className="flex flex-wrap items-center gap-2">
               {timerOptions.map((min) => (
                 <Button
                   key={min}
-                  variant={timer === min * 60 ? 'default' : 'outline'}
+                  type="button"
+                  variant={timer === min * 60 ? "default" : "outline"}
                   onClick={() => handleTimerSelect(min)}
-                  className={`rounded-full px-6 py-2 font-semibold transition-all duration-150 ${timer === min * 60 ? 'ring-2 ring-indigo-400' : ''}`}
+                  className="rounded-full"
                 >
                   {min} min
                 </Button>
               ))}
-              <div className="relative">
-                <input
+              <div className="relative w-32">
+                <Input
                   type="number"
-                  min="1"
+                  min={1}
                   placeholder="Custom"
                   value={customMinutes}
                   onChange={handleCustomInput}
-                  className="w-32 px-3 py-2 rounded-full border border-gray-300 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center appearance-none"
-                  style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                  className="rounded-full pr-10 text-center"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">min</span>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  min
+                </span>
               </div>
             </div>
-            <div className="flex gap-2">
-              {(() => {
-                let timerButtonContent;
-                if (timerActive) {
-                  timerButtonContent = (
-                    <>
-                      <FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Running...</span>
-                    </>
-                  );
-                } else if (!hasStarted) {
-                  timerButtonContent = (
-                    <>
-                      <FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Start Timer</span>
-                    </>
-                  );
-                } else {
-                  timerButtonContent = (
-                    <>
-                      <FiPlay className="inline mr-1 text-green-500" /> <span className="text-green-600">Resume</span>
-                    </>
-                  );
-                }
-                return (
-                  <Button variant="outline" onClick={startTimer} disabled={timerActive || timer === 0}>
-                    {timerButtonContent}
-                  </Button>
-                );
-              })()}
-              <Button variant="outline" onClick={pauseTimer} disabled={!timerActive}>
-                <FiPause className="inline mr-1 text-blue-500" /> <span className="text-blue-600">Pause</span>
-              </Button>
-              <Button variant="outline" onClick={resetTimer}>
-                <FiRotateCw className="inline mr-1 text-red-500" /> <span className="text-red-600">Reset</span>
-              </Button>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Timer className="size-5" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Time remaining
+                  </p>
+                  <p className="font-mono text-2xl font-bold tabular-nums">
+                    {formatTime(timer)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={startTimer}
+                  disabled={timerActive || timer === 0}
+                >
+                  <Play className="size-4" />
+                  {timerActive ? "Running" : !hasStarted ? "Start" : "Resume"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={pauseTimer}
+                  disabled={!timerActive}
+                >
+                  <Pause className="size-4" />
+                  Pause
+                </Button>
+                <Button variant="outline" onClick={resetTimer}>
+                  <RotateCcw className="size-4" />
+                  Reset
+                </Button>
+              </div>
             </div>
-            <p className="text-lg font-bold">Time Remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}</p>
-            <Link href="/practice/challenges/session">
-              <Button variant="outline">Begin Challenge</Button>
-            </Link>
           </div>
         </CardContent>
+        <CardFooter className="border-t">
+          <Button asChild>
+            <Link href="/practice/challenges/session">Begin challenge</Link>
+          </Button>
+        </CardFooter>
       </Card>
-      <h2 className="text-2xl font-bold mt-8">Challenge History</h2>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Past challenges</CardTitle>
+            <CardDescription>Review your recent sessions</CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y">
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <span className="font-medium">Algorithms Challenge</span>
+              <Badge variant="secondary">Score 85</Badge>
+            </div>
+            <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+              <span className="font-medium">Data Structures Challenge</span>
+              <Badge variant="secondary">Score 90</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Leaderboard</CardTitle>
+              <CardDescription>Top performers this week</CardDescription>
+            </div>
+            <Trophy className="size-5 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1">
+              {leaderboard.map((entry) => (
+                <li
+                  key={entry.rank}
+                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="inline-flex size-6 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                      {entry.rank}
+                    </span>
+                    {entry.name}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {entry.score}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Past Challenges</CardTitle>
-          <CardDescription>Review your previous coding challenges</CardDescription>
+          <CardTitle>Submit feedback</CardTitle>
+          <CardDescription>
+            Share your thoughts on the challenge experience
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>Algorithms Challenge</span>
-              <span>Score: 85</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Data Structures Challenge</span>
-              <span>Score: 90</span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-      <h2 className="text-2xl font-bold mt-8">Leaderboard</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Performers</CardTitle>
-          <CardDescription>See who's leading the coding challenges</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>User 1</span>
-              <span>Score: 95</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 2</span>
-              <span>Score: 90</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 3</span>
-              <span>Score: 85</span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-      <h2 className="text-2xl font-bold mt-8">Feedback</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Submit Feedback</CardTitle>
-          <CardDescription>Share your thoughts on the challenge experience</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            className="w-full p-2 border rounded-md"
-            placeholder="Enter your feedback here..."
+        <CardContent className="space-y-3">
+          <Textarea
+            placeholder="What worked well, what could be better..."
             rows={4}
           />
-          <Button variant="outline" className="mt-2">Submit Feedback</Button>
+          <Button variant="outline">Submit feedback</Button>
         </CardContent>
       </Card>
-      <h2 className="text-2xl font-bold mt-8">Resources</h2>
+
       <Card>
         <CardHeader>
-          <CardTitle>Coding Resources</CardTitle>
-          <CardDescription>Helpful resources for coding practice</CardDescription>
+          <CardTitle>Coding resources</CardTitle>
+          <CardDescription>
+            Helpful references to level up your practice
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li><Link href="#" className="text-blue-500 hover:underline">Coding Tips</Link></li>
-            <li><Link href="#" className="text-blue-500 hover:underline">Practice Problems</Link></li>
-            <li><Link href="#" className="text-blue-500 hover:underline">Tutorials</Link></li>
-          </ul>
+        <CardContent className="divide-y">
+          {[
+            { label: "Coding tips", href: "#" },
+            { label: "Practice problems", href: "/problems" },
+            { label: "Tutorials", href: "#" },
+          ].map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className="flex items-center justify-between py-3 text-sm font-medium transition-colors first:pt-0 last:pb-0 hover:text-primary"
+            >
+              {link.label}
+              <span aria-hidden className="text-muted-foreground">→</span>
+            </Link>
+          ))}
         </CardContent>
       </Card>
     </div>

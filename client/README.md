@@ -7,6 +7,26 @@ This is the frontend application for AlgoAce, built with Next.js, TypeScript, an
 - Node.js 18 or higher
 - npm or yarn
 
+- For Linux / WSL:
+
+If you are on Ubuntu/Debian (including WSL), install Node.js using the NodeSource repository (the default apt version may be too old):
+
+```bash
+# Install Node.js 20.x (LTS)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Verify the installation:
+```bash
+node --version   # should be v20.x or higher
+npm --version
+```
+
+> If you already have Node 18+ installed, you can skip the above and proceed directly to Setup.
+
+---
+
 ## Setup
 
 1. Install dependencies:
@@ -41,6 +61,8 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:3000`
+
+---
 
 ## Project Structure
 

@@ -11,13 +11,13 @@ import {
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import { Separator } from "@/components/ui/separator";
 import Script from "next/script";
-// import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AlgoAce - DSA Preparation",
+  title: "AlgoAce — DSA Preparation",
   description: "A platform for Data Structures and Algorithms preparation",
 };
 
@@ -41,7 +41,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           <ThemeProvider
             attribute="class"
@@ -51,12 +51,17 @@ export default function RootLayout({
           >
             <SidebarProvider>
               <AppSidebar />
-              <SidebarInset style={{overflowX:"hidden"}}>
-                <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-16">
-                  <SidebarTrigger className="cursor-pointer" />
-                  <div className="flex-1" />
+              <SidebarInset className="overflow-x-hidden bg-muted/20">
+                <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:h-16 lg:px-6">
+                  <SidebarTrigger className="-ml-1" />
+                  <Separator orientation="vertical" className="h-5" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    AlgoAce
+                  </span>
                 </header>
-                <main className="flex-1 p-4 md:p-6" style={{overflowX:"hidden"}}>{children}</main>
+                <main className="mx-auto w-full max-w-screen-2xl flex-1 overflow-x-hidden p-4 md:p-6 lg:p-8">
+                  {children}
+                </main>
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>
