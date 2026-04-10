@@ -2,7 +2,7 @@
 
 > **Your AI-powered interview prep coach** — personalised DSA roadmaps, curated LeetCode problem sets, timed challenges, voice-based mock interviews, and a feedback loop that actually learns from how you're doing.
 
-AlgoAce takes a user's goal (*"Google L4 in 8 weeks"*), current knowledge, and available time, then generates a week-by-week study roadmap, populates each week with company-tagged LeetCode problems, tracks every solve, and continuously coaches the user with Gemini-powered feedback that knows their pace, weak topics, and recent mock-interview scores.
+AlgoAce takes a user's goal (*"Google L4 in 8 weeks"*), current knowledge, and available time, then generates a week-by-week study roadmap, populates each week with company-tagged LeetCode problems, tracks every solve, and continuously coaches the user with AI-powered feedback that knows their pace, weak topics, and recent mock-interview scores.
 
 ---
 
