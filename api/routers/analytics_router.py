@@ -382,6 +382,64 @@ def _compute_roadmap_progress(roadmap: dict, tasks: list[dict], progress_entries
     }
 
 
+@router.get("/roadmaps")
+async def get_all_roadmap_analytics(user=Depends(get_current_user)):
+    """
+    Lightweight overview of every roadmap's overall completion + pace status,
+    keyed by roadmap_id. Used by the roadmap list page so each card can show a
+    progress bar without N round-trips. Per-week / topic detail is omitted —
+    use `/roadmap/{id}` for the full snapshot.
+    """
+    try:
+        user_id = user.user.id
+        now = datetime.now(timezone.utc)
+
+        roadmaps_resp = (
+            supabase.table("roadmaps").select("*").eq("user_id", user_id).execute()
+        )
+        roadmaps = roadmaps_resp.data or []
+        if not roadmaps:
+            return {"roadmaps": {}}
+
+        roadmap_ids = [r["id"] for r in roadmaps]
+        tasks_resp = (
+            supabase.table("tasks").select("*").in_("roadmap_id", roadmap_ids).execute()
+        )
+        progress_resp = (
+            supabase.table("progress")
+            .select("*")
+            .in_("roadmap_id", roadmap_ids)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        tasks_by_roadmap: dict[int, list[dict]] = defaultdict(list)
+        for t in tasks_resp.data or []:
+            tasks_by_roadmap[t["roadmap_id"]].append(t)
+        progress_by_roadmap: dict[int, list[dict]] = defaultdict(list)
+        for p in progress_resp.data or []:
+            progress_by_roadmap[p["roadmap_id"]].append(p)
+
+        result: dict[int, dict] = {}
+        for roadmap in roadmaps:
+            rid = roadmap["id"]
+            snap = _compute_roadmap_progress(
+                roadmap, tasks_by_roadmap.get(rid, []), progress_by_roadmap.get(rid, []), now
+            )
+            result[rid] = {
+                "roadmap_id": rid,
+                "overall": snap["overall"],
+                "pace": snap["pace"],
+                "total_weeks": snap["total_weeks"],
+                "weak_topics": [t["name"] for t in snap["weak_topics"][:3]],
+            }
+        return {"roadmaps": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error building roadmap overview: {str(e)}")
+
+
 @router.get("/roadmap/{roadmap_id}")
 async def get_roadmap_analytics(roadmap_id: int, user=Depends(get_current_user)):
     """

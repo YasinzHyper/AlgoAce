@@ -14,7 +14,7 @@ import ProblemCard from '@/components/problems/ProblemCard'
 import WeekPagination from '@/components/problems/WeekPagination'
 import { PageHeader } from '@/components/layout/page-header'
 import { EmptyState } from '@/components/layout/empty-state'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -100,6 +100,8 @@ export default function ProblemsPage() {
   const [feedbackByTask, setFeedbackByTask] = useState<Record<number, WeekFeedback>>({})
   const [feedbackLoadingTaskId, setFeedbackLoadingTaskId] = useState<number | null>(null)
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Fetch roadmaps on mount
   useEffect(() => {
@@ -150,7 +152,11 @@ export default function ProblemsPage() {
       }
     }
     fetchRoadmaps()
-  }, [searchParams])
+    // Intentionally mount-only: initial roadmap/week resolution reads the
+    // *incoming* URL once. Subsequent URL updates are pushed *by* this page
+    // (see the sync effect below) and must not trigger a refetch loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Fetch problem dataset on mount
   useEffect(() => {
@@ -253,6 +259,21 @@ export default function ProblemsPage() {
     if (!selectedRoadmap || typeof window === 'undefined') return
     window.localStorage.setItem(LAST_WEEK_KEY(selectedRoadmap.id), String(currentWeek))
   }, [selectedRoadmap, currentWeek])
+
+  // Keep ?roadmap= & ?week= in sync with the current selection so a browser
+  // refresh / shared link lands on the same view (URL > localStorage).
+  useEffect(() => {
+    if (!selectedRoadmap) return
+    const current = searchParams.toString()
+    const params = new URLSearchParams(current)
+    params.set('roadmap', String(selectedRoadmap.id))
+    params.set('week', String(currentWeek))
+    const next = params.toString()
+    if (next !== current) {
+      router.replace(`${pathname}?${next}`, { scroll: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRoadmap?.id, currentWeek])
 
   const handleGenerateWeekFeedback = async (taskId: number) => {
     setFeedbackLoadingTaskId(taskId)

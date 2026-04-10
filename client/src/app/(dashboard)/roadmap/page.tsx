@@ -20,6 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/utils/supabase/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,8 +51,38 @@ import { EmptyState } from '@/components/layout/empty-state'
 
 type SortOrder = 'newest' | 'oldest' | 'deadline'
 
+type PaceStatus = 'ahead' | 'on_track' | 'behind' | 'no_data'
+
+interface RoadmapOverview {
+  roadmap_id: number
+  overall: { completed: number; total: number; percentage: number }
+  pace: { status: PaceStatus; delta: number; days_remaining: number | null }
+  total_weeks: number
+  weak_topics: string[]
+}
+
+const PACE_BADGE: Record<PaceStatus, { label: string; className: string }> = {
+  ahead: {
+    label: 'Ahead',
+    className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  },
+  on_track: {
+    label: 'On track',
+    className: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  },
+  behind: {
+    label: 'Behind',
+    className: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  },
+  no_data: {
+    label: 'Not started',
+    className: 'border-muted bg-muted/40 text-muted-foreground',
+  },
+}
+
 const RoadmapDashboard = () => {
   const [roadmaps, setRoadmaps] = useState<any[]>([])
+  const [overview, setOverview] = useState<Record<number, RoadmapOverview>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
@@ -96,6 +128,20 @@ const RoadmapDashboard = () => {
         const data = await response.json()
         console.log('API Response:', data)
         setRoadmaps(data.roadmaps)
+
+        // Fetch per-roadmap completion in one shot so each card can render a
+        // progress bar inline. Non-blocking: failure here doesn't hide cards.
+        try {
+          const ovRes = await fetch('http://localhost:8000/api/analytics/roadmaps', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (ovRes.ok) {
+            const ovJson = await ovRes.json()
+            setOverview(ovJson.roadmaps ?? {})
+          }
+        } catch (e) {
+          console.warn('Roadmap overview fetch failed', e)
+        }
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -209,7 +255,12 @@ const RoadmapDashboard = () => {
       ) : (
         <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
           {sortedRoadmaps.map((roadmap) => (
-            <RoadmapCard key={roadmap.id} roadmap={roadmap} onDelete={handleDelete} />
+            <RoadmapCard
+              key={roadmap.id}
+              roadmap={roadmap}
+              overview={overview[roadmap.id]}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
@@ -219,18 +270,28 @@ const RoadmapDashboard = () => {
 
 const RoadmapCard = ({
   roadmap,
+  overview,
   onDelete,
 }: {
   roadmap: any
+  overview?: RoadmapOverview
   onDelete: (id: number) => void
 }) => {
   const { goal, weeks, company, deadline, role } = roadmap.user_input
   const deadlineDate = deadline ? new Date(deadline).toLocaleDateString() : null
+  const pace = overview ? PACE_BADGE[overview.pace.status] ?? PACE_BADGE.no_data : null
 
   return (
     <Card className="group flex flex-col transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
       <CardHeader className="space-y-3">
-        <CardTitle className="line-clamp-2 text-lg leading-snug">{goal}</CardTitle>
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="line-clamp-2 text-lg leading-snug">{goal}</CardTitle>
+          {pace && (
+            <Badge variant="outline" className={cn('shrink-0', pace.className)}>
+              {pace.label}
+            </Badge>
+          )}
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {company && (
             <Badge variant="secondary" className="gap-1">
@@ -246,7 +307,7 @@ const RoadmapCard = ({
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 space-y-4">
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <CalendarRange className="size-4" />
@@ -259,6 +320,17 @@ const RoadmapCard = ({
             </span>
           )}
         </div>
+        {overview && (
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-semibold">{overview.overall.percentage}%</span>
+              <span className="text-muted-foreground">
+                {overview.overall.completed}/{overview.overall.total} problems
+              </span>
+            </div>
+            <Progress value={overview.overall.percentage} className="h-1.5" />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="gap-2 border-t pt-4">
         <Button asChild className="flex-1">

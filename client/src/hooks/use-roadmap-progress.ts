@@ -69,12 +69,16 @@ interface UseRoadmapProgressResult {
   feedback: RoadmapFeedback | null
   loading: boolean
   generating: boolean
+  /** Seconds until regenerate is allowed again (0 = available now). Ticks live. */
+  cooldownSeconds: number
   error: string | null
   refresh: () => Promise<void>
   generateFeedback: () => Promise<void>
 }
 
 const API_BASE = "http://localhost:8000"
+/** Mirrors `ROADMAP_FEEDBACK_COOLDOWN_SECONDS` in `progress_router.py`. */
+const FEEDBACK_COOLDOWN_SECONDS = 5 * 60
 
 async function authedFetch(path: string, init?: RequestInit) {
   const { data: sessionData } = await supabase.auth.getSession()
@@ -106,6 +110,29 @@ export function useRoadmapProgress(roadmapId: number | null): UseRoadmapProgress
   const [loading, setLoading] = useState<boolean>(roadmapId != null)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
+
+  // Derive remaining cooldown from the cached feedback's `generated_at` and
+  // tick it down once per second so the regenerate button re-enables itself.
+  useEffect(() => {
+    const compute = () => {
+      if (!feedback?.generated_at) return 0
+      const generatedAt = new Date(feedback.generated_at).getTime()
+      if (Number.isNaN(generatedAt)) return 0
+      const elapsed = Math.floor((Date.now() - generatedAt) / 1000)
+      return Math.max(0, FEEDBACK_COOLDOWN_SECONDS - elapsed)
+    }
+    setCooldownSeconds(compute())
+    if (!feedback?.generated_at) return
+    const id = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        const next = compute()
+        if (next === 0 && prev === 0) clearInterval(id)
+        return next
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [feedback?.generated_at])
 
   const refresh = useCallback(async () => {
     if (roadmapId == null) {
@@ -162,5 +189,14 @@ export function useRoadmapProgress(roadmapId: number | null): UseRoadmapProgress
     refresh()
   }, [refresh])
 
-  return { data, feedback, loading, generating, error, refresh, generateFeedback }
+  return {
+    data,
+    feedback,
+    loading,
+    generating,
+    cooldownSeconds,
+    error,
+    refresh,
+    generateFeedback,
+  }
 }

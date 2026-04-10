@@ -11,6 +11,11 @@ from google.genai import types
 router = APIRouter()
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+# Minimum seconds between roadmap-level feedback regenerations. Prevents
+# accidental Gemini spam from the UI; the client also enforces this but the
+# server is authoritative. Override with `?force=true` for admin/debug use.
+ROADMAP_FEEDBACK_COOLDOWN_SECONDS = 5 * 60
+
 FEEDBACK_SYSTEM_INSTRUCTION = (
     "You are an expert DSA interview coach providing personalized, evidence-based "
     "feedback on a learner's progress. You ONLY respond with valid JSON (no markdown "
@@ -423,13 +428,18 @@ async def get_roadmap_feedback(roadmap_id: int, user=Depends(get_current_user)):
 
 
 @router.post("/roadmap/{roadmap_id}/feedback")
-async def generate_roadmap_feedback(roadmap_id: int, user=Depends(get_current_user)):
+async def generate_roadmap_feedback(
+    roadmap_id: int, force: bool = False, user=Depends(get_current_user)
+):
     """
     Generate roadmap-level AI coaching feedback. Aggregates every task's progress,
     derives pace vs the user's timeline and strong/weak topics, then asks the
     model for a structured review. The result is persisted to `roadmap_feedback`
     so it can be re-read cheaply; if that table doesn't exist yet the endpoint
     still returns the generated feedback (persistence failure is non-fatal).
+
+    Rate-limited to one regeneration per `ROADMAP_FEEDBACK_COOLDOWN_SECONDS`;
+    pass `?force=true` to bypass (intended for debugging only).
     """
     try:
         from routers.analytics_router import _compute_roadmap_progress
@@ -443,6 +453,38 @@ async def generate_roadmap_feedback(roadmap_id: int, user=Depends(get_current_us
         if not roadmap_response.data:
             raise HTTPException(status_code=404, detail="Roadmap not found or not authorized")
         roadmap = roadmap_response.data[0]
+
+        # ---- Cooldown guard ---------------------------------------------------
+        if not force:
+            try:
+                last_resp = (
+                    supabase.table("roadmap_feedback")
+                    .select("generated_at")
+                    .eq("roadmap_id", roadmap_id)
+                    .eq("user_id", user_id)
+                    .order("generated_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                if last_resp.data:
+                    last_at = datetime.fromisoformat(
+                        str(last_resp.data[0]["generated_at"]).replace("Z", "+00:00")
+                    )
+                    elapsed = (now - last_at).total_seconds()
+                    if elapsed < ROADMAP_FEEDBACK_COOLDOWN_SECONDS:
+                        retry_after = int(ROADMAP_FEEDBACK_COOLDOWN_SECONDS - elapsed)
+                        raise HTTPException(
+                            status_code=429,
+                            detail={
+                                "message": "Feedback was generated recently; please wait before regenerating.",
+                                "retry_after_seconds": retry_after,
+                            },
+                        )
+            except HTTPException:
+                raise
+            except Exception as e:
+                # Table may not exist on older deployments; skip the guard.
+                print(f"[feedback] cooldown check skipped: {str(e)}")
 
         tasks_resp = supabase.table("tasks").select("*").eq("roadmap_id", roadmap_id).execute()
         progress_resp = (

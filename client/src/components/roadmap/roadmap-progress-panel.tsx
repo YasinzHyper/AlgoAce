@@ -74,8 +74,22 @@ interface RoadmapProgressPanelProps {
  * and the most recent AI feedback (with a regenerate action).
  */
 export function RoadmapProgressPanel({ roadmapId, className }: RoadmapProgressPanelProps) {
-  const { data, feedback, loading, generating, error, refresh, generateFeedback } =
-    useRoadmapProgress(roadmapId)
+  const {
+    data,
+    feedback,
+    loading,
+    generating,
+    cooldownSeconds,
+    error,
+    refresh,
+    generateFeedback,
+  } = useRoadmapProgress(roadmapId)
+
+  const cooldownLabel =
+    cooldownSeconds > 0
+      ? `${Math.floor(cooldownSeconds / 60)}:${String(cooldownSeconds % 60).padStart(2, "0")}`
+      : null
+  const regenerateDisabled = generating || cooldownSeconds > 0
 
   const handleGenerate = async () => {
     try {
@@ -243,8 +257,15 @@ export function RoadmapProgressPanel({ roadmapId, className }: RoadmapProgressPa
                 variant="ghost"
                 size="icon"
                 onClick={handleGenerate}
-                disabled={generating}
-                aria-label="Regenerate feedback"
+                disabled={regenerateDisabled}
+                aria-label={
+                  cooldownLabel
+                    ? `Regenerate available in ${cooldownLabel}`
+                    : "Regenerate feedback"
+                }
+                title={
+                  cooldownLabel ? `Regenerate available in ${cooldownLabel}` : undefined
+                }
               >
                 {generating ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -326,11 +347,16 @@ export function RoadmapProgressPanel({ roadmapId, className }: RoadmapProgressPa
                 </div>
               )}
 
-              <p className="border-t pt-3 text-xs text-muted-foreground">
-                Generated{" "}
-                {formatDistanceToNow(new Date(feedback.generated_at), { addSuffix: true })} at{" "}
-                {feedback.completion_percentage}% complete
-              </p>
+              <div className="flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
+                <span>
+                  Generated{" "}
+                  {formatDistanceToNow(new Date(feedback.generated_at), { addSuffix: true })} at{" "}
+                  {feedback.completion_percentage}% complete
+                </span>
+                {cooldownLabel && (
+                  <span className="shrink-0 tabular-nums">Refresh in {cooldownLabel}</span>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
