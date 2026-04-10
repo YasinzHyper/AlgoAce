@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Trophy, Target, Clock, BookOpen, Code2, Camera, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Trophy, Target, BookOpen, Code2, Camera, Image as ImageIcon, Trash2, Flame } from "lucide-react";
 import { ActivityCalendar } from "react-activity-calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
@@ -22,34 +22,32 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/layout/stat-card";
 import { PageHeader } from "@/components/layout/page-header";
-
-// Generate a year of mock activity data (GitHub-style contribution graph)
-function generateActivityData() {
-  const end = new Date();
-  const start = new Date();
-  start.setFullYear(end.getFullYear() - 1);
-  start.setDate(start.getDate() + 1);
-  const days = [];
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const rand = Math.random();
-    const count = rand < 0.55 ? 0 : rand < 0.75 ? 1 : rand < 0.88 ? 2 : rand < 0.96 ? 3 : 5;
-    days.push({
-      date: d.toISOString().slice(0, 10),
-      count,
-      level: count === 0 ? 0 : Math.min(4, count),
-    });
-  }
-  return days;
-}
+import { useAnalytics } from "@/hooks/use-analytics";
+import { formatDistanceToNow } from "date-fns";
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const { resolvedTheme } = useTheme();
-  const activityData = useMemo(generateActivityData, []);
+  const { data: analytics, loading: analyticsLoading } = useAnalytics();
+
+  const activityData = useMemo(
+    () => analytics?.daily_activity ?? [],
+    [analytics]
+  );
   const totalContributions = useMemo(
     () => activityData.reduce((sum, d) => sum + d.count, 0),
     [activityData]
   );
+
+  const totals = analytics?.totals;
+  const difficultyMap = useMemo(() => {
+    const m: Record<string, number> = { Easy: 0, Medium: 0, Hard: 0 };
+    for (const d of analytics?.difficulty_distribution ?? []) m[d.name] = d.value;
+    return m;
+  }, [analytics]);
+  const topTopics = (analytics?.topic_mastery ?? []).slice(0, 6);
+  const maxTopicValue = topTopics.reduce((max, t) => Math.max(max, t.value), 0) || 1;
+  const recentActivity = analytics?.recent_activity ?? [];
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
@@ -325,28 +323,42 @@ export default function ProfilePage() {
       </Dialog>
 
       {/* Stats Overview */}
-      <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          title="Problems Solved"
-          value={24}
-          icon={Trophy}
-          sparkle
-          trend={{ value: "+3 this week", positive: true }}
-        />
-        <StatCard
-          title="Current Streak"
-          value="5 days"
-          icon={Target}
-          sparkle
-          description="vs 4 last week"
-        />
-        <StatCard
-          title="Total Time"
-          value="12h 30m"
-          icon={Clock}
-          description="all time"
-        />
-      </div>
+      {analyticsLoading || !totals ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            title="Problems Solved"
+            value={totals.problems_solved}
+            icon={Trophy}
+            sparkle={totals.problems_solved > 0}
+            trend={
+              totals.solved_this_week > 0
+                ? { value: `+${totals.solved_this_week} this week`, positive: true }
+                : undefined
+            }
+          />
+          <StatCard
+            title="Current Streak"
+            value={`${totals.current_streak} ${totals.current_streak === 1 ? "day" : "days"}`}
+            icon={Flame}
+            sparkle={totals.current_streak > 0}
+            description={
+              totals.last_activity_date ? `last active ${totals.last_activity_date}` : "no activity yet"
+            }
+          />
+          <StatCard
+            title="Longest Streak"
+            value={`${totals.longest_streak} ${totals.longest_streak === 1 ? "day" : "days"}`}
+            icon={Target}
+            description="personal best"
+          />
+        </div>
+      )}
 
       {/* Detailed Progress */}
       <Card>
@@ -361,65 +373,47 @@ export default function ProfilePage() {
               <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
             </TabsList>
             <TabsContent value="topics" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Arrays & Strings</span>
-                    <span className="text-sm text-muted-foreground">75%</span>
-                  </div>
-                  <Progress value={75} className="h-2" />
+              {analyticsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-6 w-full" />
+                  ))}
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Linked Lists</span>
-                    <span className="text-sm text-muted-foreground">45%</span>
-                  </div>
-                  <Progress value={45} className="h-2" />
+              ) : topTopics.length > 0 ? (
+                <div className="space-y-4">
+                  {topTopics.map((t) => (
+                    <div key={t.name}>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">{t.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {t.value} solved
+                        </span>
+                      </div>
+                      <Progress value={(t.value / maxTopicValue) * 100} className="h-2" />
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Trees & Graphs</span>
-                    <span className="text-sm text-muted-foreground">30%</span>
-                  </div>
-                  <Progress value={30} className="h-2" />
-                </div>
-              </div>
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">
+                  No topic data yet. Complete some problems to see your strongest areas.
+                </p>
+              )}
             </TabsContent>
             <TabsContent value="difficulty" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Easy</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">15</p>
+                {(["Easy", "Medium", "Hard"] as const).map((level) => (
+                  <Card key={level}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{level}</Badge>
+                        <div>
+                          <p className="text-sm font-medium">Completed</p>
+                          <p className="text-2xl font-bold">{difficultyMap[level] ?? 0}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Medium</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">7</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Hard</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">2</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </TabsContent>
           </Tabs>
@@ -433,35 +427,50 @@ export default function ProfilePage() {
           <CardDescription>Your latest learning milestones</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-blue-100 rounded-full">
-                <Code2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium">Solved "Two Sum" Problem</p>
-                <p className="text-sm text-muted-foreground">2 hours ago</p>
-              </div>
+          {analyticsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-green-100 rounded-full">
-                <BookOpen className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Completed Linked Lists Module</p>
-                <p className="text-sm text-muted-foreground">1 day ago</p>
-              </div>
+          ) : recentActivity.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivity.slice(0, 5).map((item, idx) => {
+                const isProblem = item.type === "problem";
+                return (
+                  <div
+                    key={`${item.type}-${item.problem_id ?? item.title}-${idx}`}
+                    className="flex items-center gap-4"
+                  >
+                    <div
+                      className={`p-2 rounded-full ${
+                        isProblem ? "bg-blue-100 dark:bg-blue-500/20" : "bg-green-100 dark:bg-green-500/20"
+                      }`}
+                    >
+                      {isProblem ? (
+                        <Code2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {isProblem ? `Solved "${item.title}"` : `Completed ${item.title} topic`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.completed_at), { addSuffix: true })}
+                        {item.difficulty ? ` · ${item.difficulty}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-purple-100 rounded-full">
-                <Trophy className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-medium">Achieved 5-day Streak</p>
-                <p className="text-sm text-muted-foreground">2 days ago</p>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">
+              No activity yet — mark a problem as completed to get started.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -469,9 +478,12 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>{totalContributions} contributions in the last year</CardTitle>
-          <CardDescription>Problems solved per day</CardDescription>
+          <CardDescription>Problems and topics completed per day</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
+          {analyticsLoading || activityData.length === 0 ? (
+            <Skeleton className="h-[140px] w-full" />
+          ) : (
           <ActivityCalendar
             data={activityData}
             blockSize={11}
@@ -505,95 +517,7 @@ export default function ProfilePage() {
               </Tooltip>
             )}
           />
-        </CardContent>
-      </Card>
-
-      {/* Weekly Goals */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Goals</CardTitle>
-          <CardDescription>Stay focused and hit your targets</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Problems to Solve</span>
-                <span className="text-sm text-muted-foreground">3 / 5</span>
-              </div>
-              <Progress value={(3 / 5) * 100} />
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Hours to Study</span>
-                <span className="text-sm text-muted-foreground">6 / 10</span>
-              </div>
-              <Progress value={(6 / 10) * 100} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Achievements */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Achievements</CardTitle>
-          <CardDescription>Milestones you’ve unlocked</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              <span>10 Problems Solved</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-blue-500" />
-              <span>5-Day Streak</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-green-500" />
-              <span>10 Hours Logged</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* XP / Level System */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Experience</CardTitle>
-          <CardDescription>Gamify your growth</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p>Level 2</p>
-            <Progress value={40} />
-            <p className="text-sm text-muted-foreground">40 XP / 100 XP to next level</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Leaderboard */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Leaderboard</CardTitle>
-          <CardDescription>See where you rank</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>🥇 Alice</span>
-              <span>120 XP</span>
-            </li>
-            <li className="flex justify-between">
-              <span>🥈 Bob</span>
-              <span>100 XP</span>
-            </li>
-            <li className="flex justify-between font-semibold">
-              <span>🥉 You</span>
-              <span>90 XP</span>
-            </li>
-          </ul>
+          )}
         </CardContent>
       </Card>
     </div>

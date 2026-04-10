@@ -4,10 +4,103 @@ from supabase_client import supabase
 from google import genai
 from config import GEMINI_API_KEY
 import json
+import pandas as pd
 from google.genai import types
 
 router = APIRouter()
 client = genai.Client(api_key=GEMINI_API_KEY)
+
+# Lightweight lookup for a problem's primary topic so we can satisfy the
+# NOT NULL `topic_name` column on `problem_completions` without changing the
+# request contract of the complete endpoint.
+try:
+    _pc_problems_df = pd.read_csv("dataset/leetcode-problems.csv", usecols=["id", "related_topics"]).set_index("id")
+except Exception as e:
+    print(f"[progress] Error loading dataset for topic lookup: {str(e)}")
+    _pc_problems_df = pd.DataFrame()
+
+
+def _primary_topic_for(problem_id: int) -> str:
+    try:
+        if not _pc_problems_df.empty and problem_id in _pc_problems_df.index:
+            raw = _pc_problems_df.loc[problem_id, "related_topics"]
+            if pd.notna(raw) and str(raw).strip():
+                return str(raw).split(",")[0].strip()
+    except Exception:
+        pass
+    return "General"
+
+
+def _record_completion_event(
+    *, user_id: str, roadmap_id: int, task_id: int, item_type: str, item_id: str, completed: bool
+) -> None:
+    """
+    Mirror a progress toggle into the append-only problem_completions /
+    topic_completions tables and refresh the cached streak. Failures here are
+    logged but never block the primary progress update.
+    """
+    try:
+        if item_type == "problem":
+            table = "problem_completions"
+            problem_id = int(item_id)
+            match = (
+                supabase.table(table)
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("task_id", task_id)
+                .eq("problem_id", problem_id)
+            )
+            if completed:
+                existing = match.execute()
+                if not existing.data:
+                    supabase.table(table).insert({
+                        "user_id": user_id,
+                        "roadmap_id": roadmap_id,
+                        "task_id": task_id,
+                        "problem_id": problem_id,
+                        "topic_name": _primary_topic_for(problem_id),
+                    }).execute()
+            else:
+                (
+                    supabase.table(table)
+                    .delete()
+                    .eq("user_id", user_id)
+                    .eq("task_id", task_id)
+                    .eq("problem_id", problem_id)
+                    .execute()
+                )
+        elif item_type == "topic":
+            table = "topic_completions"
+            match = (
+                supabase.table(table)
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("task_id", task_id)
+                .eq("topic_name", item_id)
+            )
+            if completed:
+                existing = match.execute()
+                if not existing.data:
+                    supabase.table(table).insert({
+                        "user_id": user_id,
+                        "roadmap_id": roadmap_id,
+                        "task_id": task_id,
+                        "topic_name": item_id,
+                    }).execute()
+            else:
+                (
+                    supabase.table(table)
+                    .delete()
+                    .eq("user_id", user_id)
+                    .eq("task_id", task_id)
+                    .eq("topic_name", item_id)
+                    .execute()
+                )
+
+        # Recompute cached streak via the DB helper function.
+        supabase.rpc("refresh_user_streak", {"p_user_id": user_id}).execute()
+    except Exception as e:
+        print(f"[progress] completion event sync failed (non-fatal): {str(e)}")
 
 def extract_json_str(feedback:str) -> json:
         try:
@@ -134,6 +227,16 @@ async def complete_item(task_id: int, item: CompleteItem, user=Depends(get_curre
         update_response = supabase.table("progress").update(update_data).eq("id", progress["id"]).execute()
         if not update_response.data:
             raise HTTPException(status_code=500, detail="Failed to update progress")
+
+        # Mirror into analytics tables + refresh streak (non-blocking on failure).
+        _record_completion_event(
+            user_id=user.user.id,
+            roadmap_id=roadmap_id,
+            task_id=task_id,
+            item_type=item.type,
+            item_id=str(item.id),
+            completed=item.completed,
+        )
 
         return {"message": "Progress updated successfully", "progress": update_response.data[0]}
     except Exception as e:

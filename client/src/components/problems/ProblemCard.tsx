@@ -18,6 +18,14 @@ interface ProblemDetail {
 
 interface ProblemCardProps {
   problem: ProblemDetail
+  /** Task this problem belongs to; used to persist completion + deep-link. */
+  taskId?: number
+  /** Controlled completion value from the server. Falls back to local state if omitted. */
+  completed?: boolean
+  /** Called when the user toggles the checkbox. If omitted, state stays local-only. */
+  onToggleComplete?: (checked: boolean) => void
+  /** Disable the checkbox while a toggle request is in flight. */
+  pending?: boolean
 }
 
 const DIFFICULTY_STYLES: Record<
@@ -41,9 +49,27 @@ const DIFFICULTY_STYLES: Record<
   },
 }
 
-export default function ProblemCard({ problem }: ProblemCardProps) {
-  const [isCompleted, setIsCompleted] = useState(false)
+export default function ProblemCard({
+  problem,
+  taskId,
+  completed,
+  onToggleComplete,
+  pending = false,
+}: ProblemCardProps) {
+  const [localCompleted, setLocalCompleted] = useState(false)
   const [isImportant, setIsImportant] = useState(false)
+
+  const isControlled = completed !== undefined
+  const isCompleted = isControlled ? completed : localCompleted
+
+  const handleToggle = (checked: boolean) => {
+    if (onToggleComplete) {
+      onToggleComplete(checked)
+    }
+    if (!isControlled) {
+      setLocalCompleted(checked)
+    }
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem(`important-problem-${problem.id}`)
@@ -79,11 +105,15 @@ export default function ProblemCard({ problem }: ProblemCardProps) {
             <Checkbox
               id={`completed-${problem.id}`}
               checked={isCompleted}
-              onCheckedChange={(checked) => setIsCompleted(checked as boolean)}
+              disabled={pending}
+              onCheckedChange={(checked) => handleToggle(checked as boolean)}
               className="mt-0.5 shrink-0"
               aria-label="Mark as completed"
             />
-            <Link href={`/problems/${problem.id}`} className="min-w-0">
+            <Link
+              href={taskId ? `/problems/${problem.id}?task=${taskId}` : `/problems/${problem.id}`}
+              className="min-w-0"
+            >
               <CardTitle
                 className={cn(
                   "line-clamp-2 text-base leading-snug transition-colors group-hover:text-primary",

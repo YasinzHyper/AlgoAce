@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.crew import DSACrew
 from supabase_client import supabase
-from routers import roadmap_router, user_router, problem_router, progress_router
+from routers import roadmap_router, user_router, problem_router, progress_router, analytics_router
 
 app = FastAPI()
 
@@ -19,6 +19,7 @@ app.include_router(roadmap_router.router, prefix="/api/roadmap")
 app.include_router(user_router.router, prefix="/api/user")
 app.include_router(problem_router.router, prefix="/api/problems")
 app.include_router(progress_router.router, prefix="/api/progress")
+app.include_router(analytics_router.router, prefix="/api/analytics")
 
 # dsa_crew = DSACrew()
 

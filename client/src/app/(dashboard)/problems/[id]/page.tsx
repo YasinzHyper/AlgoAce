@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { use } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { supabase } from '@/utils/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -66,12 +68,70 @@ interface PageProps {
 
 export default function ProblemDetailPage({ params }: PageProps) {
   const resolvedParams = use(params)
+  const searchParams = useSearchParams()
+  const taskIdParam = searchParams.get('task')
+  const taskId = taskIdParam && /^\d+$/.test(taskIdParam) ? parseInt(taskIdParam) : null
+
   const [problem, setProblem] = useState<ProblemDetail | null>(null)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [completionPending, setCompletionPending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
   const [explanation, setExplanation] = useState<Explanation | null>(null)
   const [explanationLoading, setExplanationLoading] = useState(false)
+
+  // Load persisted completion state for this problem within its task context.
+  useEffect(() => {
+    if (!taskId) return
+    const loadProgress = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) return
+        const token = sessionData.session.access_token
+        const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const progress = await res.json()
+        const problems: Record<string, boolean> = progress?.completed?.problems ?? {}
+        setIsCompleted(Boolean(problems[resolvedParams.id]))
+      } catch {
+        // Non-fatal: leave checkbox in its default state.
+      }
+    }
+    loadProgress()
+  }, [taskId, resolvedParams.id])
+
+  const handleToggleComplete = async (checked: boolean) => {
+    setIsCompleted(checked)
+    if (!taskId) return // No task context: behave as before (local-only).
+
+    setCompletionPending(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+      const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}/complete`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'problem', id: resolvedParams.id, completed: checked }),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      toast.success(checked ? 'Marked as completed' : 'Marked as incomplete')
+    } catch (error) {
+      setIsCompleted(!checked)
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setCompletionPending(false)
+    }
+  }
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -257,7 +317,8 @@ export default function ProblemDetailPage({ params }: PageProps) {
             <Checkbox
               id="completed"
               checked={isCompleted}
-              onCheckedChange={(checked) => setIsCompleted(checked as boolean)}
+              disabled={completionPending}
+              onCheckedChange={(checked) => handleToggleComplete(checked as boolean)}
             />
             Completed
           </label>

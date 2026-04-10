@@ -52,6 +52,18 @@ interface Task {
   other_topics: string[]
 }
 
+interface ProgressEntry {
+  id: number
+  task_id: number
+  completed: {
+    problems: Record<string, boolean>
+    topics: Record<string, boolean>
+  }
+  completed_problem_count: number
+  total_problem_count: number
+  completion_percentage: number
+}
+
 export default function ProblemsPage() {
   const [roadmaps, setRoadmaps] = useState<Roadmap[]>([])
   const [selectedRoadmap, setSelectedRoadmap] = useState<Roadmap | null>(null)
@@ -63,6 +75,8 @@ export default function ProblemsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
   const [topicFilter, setTopicFilter] = useState<string>('all')
+  const [progressByTask, setProgressByTask] = useState<Record<number, ProgressEntry>>({})
+  const [pendingProblemId, setPendingProblemId] = useState<number | null>(null)
   const searchParams = useSearchParams()
 
   // Fetch roadmaps on mount
@@ -140,6 +154,106 @@ export default function ProblemsPage() {
     fetchTasks()
   }, [selectedRoadmap])
 
+  // Fetch per-task progress for the selected roadmap so checkboxes reflect server state
+  useEffect(() => {
+    if (!selectedRoadmap) {
+      setProgressByTask({})
+      return
+    }
+
+    const fetchProgress = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) throw new Error('Not authenticated')
+        const token = sessionData.session.access_token
+
+        const response = await fetch(
+          `http://localhost:8000/api/progress/roadmap/${selectedRoadmap.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (!response.ok) throw new Error('Failed to fetch progress')
+        const { progress_entries } = await response.json()
+        const map: Record<number, ProgressEntry> = {}
+        for (const entry of progress_entries as ProgressEntry[]) {
+          map[entry.task_id] = entry
+        }
+        setProgressByTask(map)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        toast.error('Error fetching progress', { description: errorMessage })
+      }
+    }
+    fetchProgress()
+  }, [selectedRoadmap])
+
+  const handleToggleComplete = async (taskId: number, problemId: number, checked: boolean) => {
+    // Optimistic update
+    setPendingProblemId(problemId)
+    setProgressByTask((prev) => {
+      const entry = prev[taskId]
+      if (!entry) return prev
+      const nextProblems = { ...entry.completed.problems, [String(problemId)]: checked }
+      const completedCount = Object.values(nextProblems).filter(Boolean).length
+      const total = entry.total_problem_count || Object.keys(nextProblems).length
+      return {
+        ...prev,
+        [taskId]: {
+          ...entry,
+          completed: { ...entry.completed, problems: nextProblems },
+          completed_problem_count: completedCount,
+          completion_percentage: total > 0 ? Math.round((completedCount / total) * 100) : 0,
+        },
+      }
+    })
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+
+      const response = await fetch(
+        `http://localhost:8000/api/progress/task/${taskId}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ type: 'problem', id: String(problemId), completed: checked }),
+        }
+      )
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      const { progress } = await response.json()
+      setProgressByTask((prev) => ({ ...prev, [taskId]: progress }))
+      toast.success(checked ? 'Marked as completed' : 'Marked as incomplete')
+    } catch (error) {
+      // Revert optimistic update
+      setProgressByTask((prev) => {
+        const entry = prev[taskId]
+        if (!entry) return prev
+        const nextProblems = { ...entry.completed.problems, [String(problemId)]: !checked }
+        const completedCount = Object.values(nextProblems).filter(Boolean).length
+        const total = entry.total_problem_count || Object.keys(nextProblems).length
+        return {
+          ...prev,
+          [taskId]: {
+            ...entry,
+            completed: { ...entry.completed, problems: nextProblems },
+            completed_problem_count: completedCount,
+            completion_percentage: total > 0 ? Math.round((completedCount / total) * 100) : 0,
+          },
+        }
+      })
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setPendingProblemId(null)
+    }
+  }
+
   // Update current week's problems when tasks or week changes
   useEffect(() => {
     if (!problemDataset || !tasks.length) return
@@ -203,6 +317,9 @@ export default function ProblemsPage() {
 
   const weekTask = tasks.find(task => task.week === currentWeek)
   const otherTopics = weekTask ? weekTask.other_topics : []
+  const weekProgress = weekTask ? progressByTask[weekTask.id] : undefined
+  const weekCompletedCount = weekProgress?.completed_problem_count ?? 0
+  const weekTotalCount = weekProgress?.total_problem_count ?? currentWeekProblems.length
 
   return (
     <div className="space-y-8">
@@ -230,6 +347,14 @@ export default function ProblemsPage() {
               <Badge variant="secondary">
                 {filteredProblems.length} of {currentWeekProblems.length}
               </Badge>
+              {weekTotalCount > 0 && (
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                >
+                  {weekCompletedCount}/{weekTotalCount} done
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3 md:flex-row">
@@ -273,7 +398,18 @@ export default function ProblemsPage() {
           {filteredProblems.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredProblems.map((problem) => (
-                <ProblemCard key={problem.id} problem={problem} />
+                <ProblemCard
+                  key={problem.id}
+                  problem={problem}
+                  taskId={weekTask?.id}
+                  completed={weekProgress?.completed?.problems?.[String(problem.id)] ?? false}
+                  pending={pendingProblemId === problem.id}
+                  onToggleComplete={
+                    weekTask
+                      ? (checked) => handleToggleComplete(weekTask.id, problem.id, checked)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ) : (

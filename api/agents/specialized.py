@@ -2,32 +2,32 @@
 from crewai import Agent, LLM
 from tools import RoadmapTool
 from config import MODEL,GEMINI_API_KEY
-from crewai_tools import CSVSearchTool
+# from crewai_tools import CSVSearchTool
 
-csv_tool = CSVSearchTool(
-    csv="dataset/leetcode-problems.csv",
-    config=dict(
-        llm=dict(
-            provider="google", # or google, openai, anthropic, llama2, ...
-            config=dict(
-                model=MODEL,
-                api_key=GEMINI_API_KEY,
-                # temperature=0.5,
-                # top_p=1,
-                # stream=true,
-            ),
-        ),
-        embedder=dict(
-            provider="google", # or openai, ollama, ...
-            config=dict(
-                model="models/embedding-001",
-                task_type="retrieval_document",
-                # api_key=GEMINI_API_KEY,
-                # title="Embeddings",
-            ),
-        ),
-    )
-)
+# csv_tool = CSVSearchTool(
+#     csv="dataset/leetcode-problems.csv",
+#     config=dict(
+#         llm=dict(
+#             provider="google", # or google, openai, anthropic, llama2, ...
+#             config=dict(
+#                 model=MODEL,
+#                 api_key=GEMINI_API_KEY,
+#                 # temperature=0.5,
+#                 # top_p=1,
+#                 # stream=true,
+#             ),
+#         ),
+#         embedder=dict(
+#             provider="google", # or openai, ollama, ...
+#             config=dict(
+#                 model="models/embedding-001",
+#                 task_type="retrieval_document",
+#                 # api_key=GEMINI_API_KEY,
+#                 # title="Embeddings",
+#             ),
+#         ),
+#     )
+# )
 
 class RoadmapAgent(Agent):
     def __init__(self):
