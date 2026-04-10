@@ -415,7 +415,7 @@ def _mint_ephemeral_token(
             new_session_expire_time=(
                 now + timedelta(minutes=TOKEN_NEW_SESSION_WINDOW_MINUTES)
             ).isoformat(),
-            live_connect_constraints=types.LiveConnectConstraints(
+            live_ephemeral_parameters=types.LiveConnectParameters(
                 model=f"models/{model_name}", config=live_cfg
             ),
         )
