@@ -6,6 +6,8 @@ import { supabase } from '@/utils/supabase/client'
 import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant, Handle, Position } from '@xyflow/react'
 import { useTheme } from 'next-themes'
 import { format } from 'date-fns'
+import { Toaster } from 'sonner'
+import { RoadmapProgressPanel } from '@/components/roadmap/roadmap-progress-panel'
 import '@xyflow/react/dist/style.css';
 
 // Define TypeScript interfaces for type safety
@@ -163,7 +165,8 @@ const RoadmapDetailPage = () => {
   const { goal, deadline, weeks, company } = roadmap.user_input
 
   return (
-    <div className="h-full">
+    <div className="h-full space-y-4">
+      <Toaster />
       {/* Roadmap Metadata */}
       <div className="rounded-lg border bg-card p-4">
         <h1 className="text-2xl font-bold mb-2">{goal}</h1>
@@ -174,8 +177,11 @@ const RoadmapDetailPage = () => {
         {company && <p className="text-muted-foreground">Company: {company}</p>}
       </div>
 
+      {/* Progress + AI feedback */}
+      <RoadmapProgressPanel roadmapId={roadmap.id} />
+
       {/* React Flow Visualization */}
-      <div className="mt-4 h-[500px] w-full overflow-hidden rounded-lg border shadow-sm">
+      <div className="h-[500px] w-full overflow-hidden rounded-lg border shadow-sm">
         <ReactFlow
           nodes={nodes}
           edges={edges}

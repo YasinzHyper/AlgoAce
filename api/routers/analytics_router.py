@@ -240,3 +240,202 @@ async def get_analytics_summary(user=Depends(get_current_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error building analytics: {str(e)}")
+
+
+def _compute_roadmap_progress(roadmap: dict, tasks: list[dict], progress_entries: list[dict], now: datetime) -> dict:
+    """
+    Shared helper that derives per-week + overall completion, pace status and
+    topic strength for a single roadmap. Kept separate so the feedback endpoint
+    in progress_router can reuse the exact same numbers the UI renders.
+    """
+    progress_by_task = {p["task_id"]: p for p in progress_entries if p.get("task_id")}
+    tasks_sorted = sorted(tasks, key=lambda t: t.get("week") or 0)
+
+    weeks: list[dict] = []
+    overall_completed = 0
+    overall_total = 0
+    topic_totals: dict[str, dict] = defaultdict(lambda: {"completed": 0, "total": 0})
+    diff_counts: dict[str, dict] = {
+        "Easy": {"completed": 0, "total": 0},
+        "Medium": {"completed": 0, "total": 0},
+        "Hard": {"completed": 0, "total": 0},
+    }
+
+    for t in tasks_sorted:
+        prog = progress_by_task.get(t["id"])
+        problems_map: dict[str, bool] = (prog or {}).get("completed", {}).get("problems", {}) or {}
+        topics_map: dict[str, bool] = (prog or {}).get("completed", {}).get("topics", {}) or {}
+        lc_ids = t.get("lc_problem_ids") or []
+        total = (prog or {}).get("total_problem_count") or len(lc_ids)
+        completed = (prog or {}).get("completed_problem_count") or sum(1 for v in problems_map.values() if v)
+        pct = int(round((completed / total) * 100)) if total > 0 else 0
+        overall_completed += completed
+        overall_total += total
+
+        # Topic + difficulty rollup using the dataset so the feedback agent can
+        # speak about *which* concepts are lagging, not just counts.
+        for pid in lc_ids:
+            try:
+                meta = _lookup_problem(int(pid))
+            except Exception:
+                meta = {"difficulty": "Unknown", "related_topics": []}
+            done = bool(problems_map.get(str(pid)))
+            difficulty = meta["difficulty"] if meta["difficulty"] in diff_counts else None
+            if difficulty:
+                diff_counts[difficulty]["total"] += 1
+                if done:
+                    diff_counts[difficulty]["completed"] += 1
+            tags = meta["related_topics"] or ["General"]
+            for tag in tags:
+                topic_totals[tag]["total"] += 1
+                if done:
+                    topic_totals[tag]["completed"] += 1
+
+        weeks.append({
+            "week": t.get("week"),
+            "task_id": t["id"],
+            "completed": completed,
+            "total": total,
+            "percentage": pct,
+            "topics_completed": sum(1 for v in topics_map.values() if v),
+            "topics_total": len(topics_map),
+            "positive_feedback": (prog or {}).get("positive_feedback"),
+            "negative_feedback": (prog or {}).get("negative_feedback"),
+        })
+
+    overall_pct = int(round((overall_completed / overall_total) * 100)) if overall_total > 0 else 0
+
+    # ---- Pace: where *should* the user be relative to created_at + total weeks ----
+    user_input = roadmap.get("user_input") or {}
+    total_weeks = user_input.get("weeks") or len(weeks) or 1
+    try:
+        created_at = datetime.fromisoformat(str(roadmap.get("created_at")).replace("Z", "+00:00"))
+    except Exception:
+        created_at = now
+    elapsed_days = max(0, (now - created_at).days)
+    # +1 so day-0 counts as "in week 1"; clamp to plan length.
+    elapsed_weeks = min(total_weeks, (elapsed_days // 7) + 1)
+    expected_pct = int(round((elapsed_weeks / total_weeks) * 100)) if total_weeks > 0 else 0
+    delta = overall_pct - expected_pct
+    if overall_total == 0:
+        status = "no_data"
+    elif delta >= 10:
+        status = "ahead"
+    elif delta <= -10:
+        status = "behind"
+    else:
+        status = "on_track"
+
+    deadline = user_input.get("deadline")
+    days_remaining = None
+    if deadline:
+        try:
+            deadline_dt = datetime.fromisoformat(str(deadline).replace("Z", "+00:00"))
+            if deadline_dt.tzinfo is None:
+                deadline_dt = deadline_dt.replace(tzinfo=timezone.utc)
+            days_remaining = (deadline_dt - now).days
+        except Exception:
+            days_remaining = None
+
+    # ---- Topic strength (>=2 assigned to be meaningful) -------------------------
+    topic_strength = []
+    for name, c in topic_totals.items():
+        if c["total"] < 2:
+            continue
+        pct = int(round((c["completed"] / c["total"]) * 100)) if c["total"] > 0 else 0
+        topic_strength.append({"name": name, "completed": c["completed"], "total": c["total"], "percentage": pct})
+    topic_strength.sort(key=lambda x: (x["percentage"], x["completed"]), reverse=True)
+    strong_topics = [t for t in topic_strength if t["percentage"] >= 60][:5]
+    weak_topics = sorted(
+        [t for t in topic_strength if t["percentage"] < 60],
+        key=lambda x: (x["percentage"], -x["total"]),
+    )[:5]
+
+    difficulty_breakdown = [
+        {"name": k, "completed": v["completed"], "total": v["total"]}
+        for k, v in diff_counts.items()
+    ]
+
+    return {
+        "roadmap_id": roadmap["id"],
+        "goal": user_input.get("goal"),
+        "company": roadmap.get("company"),
+        "created_at": roadmap.get("created_at"),
+        "deadline": deadline,
+        "total_weeks": total_weeks,
+        "overall": {
+            "completed": overall_completed,
+            "total": overall_total,
+            "percentage": overall_pct,
+        },
+        "weeks": weeks,
+        "pace": {
+            "elapsed_weeks": elapsed_weeks,
+            "expected_percentage": expected_pct,
+            "delta": delta,
+            "status": status,
+            "days_remaining": days_remaining,
+        },
+        "strong_topics": strong_topics,
+        "weak_topics": weak_topics,
+        "difficulty_breakdown": difficulty_breakdown,
+    }
+
+
+@router.get("/roadmap/{roadmap_id}")
+async def get_roadmap_analytics(roadmap_id: int, user=Depends(get_current_user)):
+    """
+    Per-roadmap progress dashboard: per-week completion, overall %, pace vs plan,
+    strong/weak topics and the most recently generated AI feedback (if any).
+    """
+    try:
+        user_id = user.user.id
+        now = datetime.now(timezone.utc)
+
+        roadmap_resp = (
+            supabase.table("roadmaps")
+            .select("*")
+            .eq("id", roadmap_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if not roadmap_resp.data:
+            raise HTTPException(status_code=404, detail="Roadmap not found or not authorized")
+        roadmap = roadmap_resp.data[0]
+
+        tasks_resp = supabase.table("tasks").select("*").eq("roadmap_id", roadmap_id).execute()
+        tasks = tasks_resp.data or []
+
+        progress_resp = (
+            supabase.table("progress")
+            .select("*")
+            .eq("roadmap_id", roadmap_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        progress_entries = progress_resp.data or []
+
+        result = _compute_roadmap_progress(roadmap, tasks, progress_entries, now)
+
+        # Attach the latest cached feedback so the UI can render it without a
+        # second round-trip. Table may not exist yet on older deployments.
+        try:
+            fb_resp = (
+                supabase.table("roadmap_feedback")
+                .select("*")
+                .eq("roadmap_id", roadmap_id)
+                .eq("user_id", user_id)
+                .order("generated_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            result["last_feedback"] = fb_resp.data[0] if fb_resp.data else None
+        except Exception as e:
+            print(f"[analytics] roadmap_feedback lookup skipped: {str(e)}")
+            result["last_feedback"] = None
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error building roadmap analytics: {str(e)}")

@@ -1,11 +1,18 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Card,
   CardContent,
@@ -28,6 +35,7 @@ import { Toaster, toast } from 'sonner'
 import Link from 'next/link'
 import {
   ArrowRight,
+  ArrowUpDown,
   Briefcase,
   Building2,
   CalendarClock,
@@ -39,12 +47,35 @@ import {
 import { PageHeader } from '@/components/layout/page-header'
 import { EmptyState } from '@/components/layout/empty-state'
 
+type SortOrder = 'newest' | 'oldest' | 'deadline'
 
 const RoadmapDashboard = () => {
   const [roadmaps, setRoadmaps] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
   const router = useRouter()
+
+  const sortedRoadmaps = useMemo(() => {
+    const list = [...roadmaps]
+    const ts = (v: string | undefined) => (v ? new Date(v).getTime() : 0)
+    switch (sortOrder) {
+      case 'oldest':
+        return list.sort((a, b) => ts(a.created_at) - ts(b.created_at))
+      case 'deadline':
+        return list.sort((a, b) => {
+          const ad = a.user_input?.deadline
+          const bd = b.user_input?.deadline
+          if (!ad && !bd) return ts(b.created_at) - ts(a.created_at)
+          if (!ad) return 1
+          if (!bd) return -1
+          return ts(ad) - ts(bd)
+        })
+      case 'newest':
+      default:
+        return list.sort((a, b) => ts(b.created_at) - ts(a.created_at))
+    }
+  }, [roadmaps, sortOrder])
 
   useEffect(() => {
     const fetchRoadmaps = async () => {
@@ -139,12 +170,25 @@ const RoadmapDashboard = () => {
         title="Roadmaps"
         description="Personalized study plans tailored to your goal and timeline."
         actions={
-          <Button asChild>
-            <Link href="/roadmap/create">
-              <Plus className="size-4" />
-              New roadmap
-            </Link>
-          </Button>
+          <>
+            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+              <SelectTrigger className="w-[160px]" aria-label="Sort roadmaps">
+                <ArrowUpDown className="size-4 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="deadline">Deadline soonest</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button asChild>
+              <Link href="/roadmap/create">
+                <Plus className="size-4" />
+                New roadmap
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -164,7 +208,7 @@ const RoadmapDashboard = () => {
         />
       ) : (
         <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
-          {roadmaps.map((roadmap) => (
+          {sortedRoadmaps.map((roadmap) => (
             <RoadmapCard key={roadmap.id} roadmap={roadmap} onDelete={handleDelete} />
           ))}
         </div>
