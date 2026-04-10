@@ -27,7 +27,9 @@ import {
 } from 'lucide-react';
 
 // Custom Hook for Shake Detection
-export function useShakeDetector(videoRef: React.RefObject<HTMLVideoElement | null>, onShake: () => void) {
+// Note: not exported — Next.js page files may only export the route segment
+// config keys (default, metadata, etc.). Extra named exports break `next build`.
+function useShakeDetector(videoRef: React.RefObject<HTMLVideoElement | null>, onShake: () => void) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastImageDataRef = useRef<ImageData | null>(null);
 

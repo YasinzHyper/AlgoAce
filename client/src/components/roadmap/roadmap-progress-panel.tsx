@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Gauge,
   Loader2,
   RefreshCw,
@@ -254,8 +255,8 @@ export function RoadmapProgressPanel({ roadmapId, className }: RoadmapProgressPa
             </div>
             {feedback && (
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 onClick={handleGenerate}
                 disabled={regenerateDisabled}
                 aria-label={
@@ -263,14 +264,20 @@ export function RoadmapProgressPanel({ roadmapId, className }: RoadmapProgressPa
                     ? `Regenerate available in ${cooldownLabel}`
                     : "Regenerate feedback"
                 }
-                title={
-                  cooldownLabel ? `Regenerate available in ${cooldownLabel}` : undefined
-                }
+                className="shrink-0 tabular-nums"
               >
                 {generating ? (
-                  <Loader2 className="size-4 animate-spin" />
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Analyzing
+                  </>
+                ) : cooldownLabel ? (
+                  <>
+                    <Clock className="size-4" /> {cooldownLabel}
+                  </>
                 ) : (
-                  <RefreshCw className="size-4" />
+                  <>
+                    <RefreshCw className="size-4" /> Regenerate
+                  </>
                 )}
               </Button>
             )}

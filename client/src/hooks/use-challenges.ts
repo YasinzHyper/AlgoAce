@@ -63,6 +63,16 @@ export interface GenerateChallengeInput {
   focus_topics?: string[]
 }
 
+export interface ChallengeStats {
+  completed: number
+  active: number
+  abandoned: number
+  best_score: number
+  total_points: number
+  avg_accuracy: number
+  active_challenge: Challenge | null
+}
+
 const API_BASE = "http://localhost:8000"
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -235,4 +245,33 @@ export function useChallenge(challengeId: number | null) {
     markSolved,
     complete,
   }
+}
+
+/**
+ * Aggregate challenge stats for the practice dashboard (counts, best score,
+ * total points, and the most recent active challenge for the "Resume" card).
+ */
+export function useChallengeStats() {
+  const [stats, setStats] = useState<ChallengeStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const json = await authedFetch<ChallengeStats>("/api/challenges/stats")
+      setStats(json)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load challenge stats")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  return { stats, loading, error, refresh }
 }

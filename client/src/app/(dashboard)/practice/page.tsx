@@ -8,9 +8,11 @@ import {
   Gauge,
   ListChecks,
   Loader2,
+  Play,
   Sparkles,
   Target,
   Timer,
+  Trophy,
   Video,
 } from "lucide-react";
 import {
@@ -30,7 +32,7 @@ import { Meteors } from "@/components/magicui/meteors";
 import { Marquee } from "@/components/magicui/marquee";
 import { LeaderboardCard } from "@/components/practice/leaderboard-card";
 import { useAnalytics } from "@/hooks/use-analytics";
-import { useChallenges } from "@/hooks/use-challenges";
+import { useChallenges, useChallengeStats } from "@/hooks/use-challenges";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -58,8 +60,10 @@ export default function PracticeOverviewPage() {
   const router = useRouter();
   const { data: analytics, loading: analyticsLoading } = useAnalytics();
   const { recommendation, generating, generate } = useChallenges();
+  const { stats: challengeStats } = useChallengeStats();
 
   const totals = analytics?.totals;
+  const activeChallenge = challengeStats?.active_challenge ?? null;
   const topTopics = (analytics?.topic_mastery ?? []).slice(0, 12).map((t) => t.name);
   const marqueeTopics = topTopics.length >= 4 ? topTopics : [
     "Arrays", "Hash Map", "Two Pointers", "Sliding Window", "Binary Search",
@@ -129,16 +133,40 @@ export default function PracticeOverviewPage() {
         ))}
       </div>
 
+      {activeChallenge && (
+        <Card className="border-sky-500/30 bg-sky-500/5">
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="size-5 text-sky-600 dark:text-sky-400" />
+                  Challenge in progress
+                </CardTitle>
+                <CardDescription>
+                  {activeChallenge.title} · {activeChallenge.solved_count}/
+                  {activeChallenge.total_count} solved
+                </CardDescription>
+              </div>
+              <Button asChild>
+                <Link href={`/practice/challenges/${activeChallenge.id}`}>
+                  <Play className="size-4" /> Resume
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
       <section className="space-y-4">
         <h2 className="text-lg font-semibold tracking-tight">Your stats</h2>
         {analyticsLoading ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[1, 2, 3].map((i) => (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-28 w-full rounded-xl" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 stagger-children sm:grid-cols-3">
+          <div className="grid gap-4 stagger-children sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Problems Solved"
               value={totals?.problems_solved ?? 0}
@@ -161,6 +189,16 @@ export default function PracticeOverviewPage() {
               value={analytics?.topic_mastery.length ?? 0}
               icon={ListChecks}
               description="distinct tags"
+            />
+            <StatCard
+              title="Challenge Points"
+              value={challengeStats?.total_points ?? 0}
+              icon={Trophy}
+              description={
+                challengeStats
+                  ? `${challengeStats.completed} done · best ${challengeStats.best_score}`
+                  : undefined
+              }
             />
           </div>
         )}

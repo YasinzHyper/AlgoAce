@@ -302,6 +302,69 @@ async def get_recommended_challenge(
         raise HTTPException(status_code=500, detail=f"Error building recommendation: {str(e)}")
 
 
+@router.get("/stats")
+async def get_challenge_stats(user=Depends(get_current_user)):
+    """
+    Aggregate challenge stats for the practice dashboard: counts by status,
+    best / total score, average accuracy, and the most recent active challenge
+    (hydrated) so the UI can render a "Resume" card without a second round-trip.
+    """
+    try:
+        try:
+            resp = (
+                supabase.table("challenges")
+                .select("*")
+                .eq("user_id", user.user.id)
+                .order("created_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+        except Exception as e:
+            print(f"[challenges] stats skipped: {str(e)}")
+            return {
+                "completed": 0,
+                "active": 0,
+                "abandoned": 0,
+                "best_score": 0,
+                "total_points": 0,
+                "avg_accuracy": 0,
+                "active_challenge": None,
+            }
+
+        rows = resp.data or []
+        completed = [r for r in rows if r.get("status") == "completed"]
+        active = [r for r in rows if r.get("status") == "active"]
+        abandoned = [r for r in rows if r.get("status") == "abandoned"]
+
+        scores = [int(r.get("score") or 0) for r in completed]
+        best_score = max(scores) if scores else 0
+        total_points = sum(scores)
+
+        accuracies: list[float] = []
+        for r in completed:
+            total = len(r.get("problem_ids") or [])
+            solved = len(r.get("solved_problem_ids") or [])
+            if total > 0:
+                accuracies.append(solved / total)
+        avg_accuracy = round(sum(accuracies) / len(accuracies) * 100) if accuracies else 0
+
+        active_challenge = _hydrate_challenge(active[0]) if active else None
+
+        return {
+            "completed": len(completed),
+            "active": len(active),
+            "abandoned": len(abandoned),
+            "best_score": best_score,
+            "total_points": total_points,
+            "avg_accuracy": avg_accuracy,
+            "active_challenge": active_challenge,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error building challenge stats: {str(e)}")
+
+
 @router.post("/generate")
 async def generate_challenge(body: GenerateChallengeRequest, user=Depends(get_current_user)):
     """
