@@ -15,8 +15,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { useAnalytics } from "@/hooks/use-analytics";
-import { BarChart3, CheckCircle2, Flame, ListChecks, TrendingUp, Trophy } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { useInterviews } from "@/hooks/use-interview";
+import { BarChart3, CheckCircle2, Flame, ListChecks, Mic, TrendingUp, Trophy } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
 import Link from "next/link";
 import {
   Area,
@@ -26,6 +27,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -57,6 +60,17 @@ const tooltipStyle = {
 
 export default function ProgressOverviewPage() {
   const { data, loading, error, refresh } = useAnalytics();
+  const { interviews, stats: interviewStats } = useInterviews();
+
+  // Chronological score series for the Interviews tab (completed only).
+  const interviewSeries = [...interviews]
+    .filter((iv) => iv.status === "completed" && iv.overall_score != null)
+    .sort((a, b) => +new Date(a.started_at) - +new Date(b.started_at))
+    .map((iv) => ({
+      label: format(new Date(iv.started_at), "MMM d"),
+      score: iv.overall_score,
+      type: iv.interview_type,
+    }));
 
   if (loading) {
     return (
@@ -163,6 +177,10 @@ export default function ProgressOverviewPage() {
               </TabsTrigger>
               <TabsTrigger value="topics">Topics</TabsTrigger>
               <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
+              <TabsTrigger value="interviews" className="gap-1.5">
+                <Mic className="size-4" />
+                <span className="hidden sm:inline">Interviews</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="progress">
@@ -304,6 +322,84 @@ export default function ProgressOverviewPage() {
                       title="No difficulty data yet"
                       description="Solve an Easy, Medium, or Hard to populate this chart."
                       className="border-0 bg-transparent p-8"
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="interviews">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Interview Scores Over Time</CardTitle>
+                      <CardDescription>
+                        Rubric-graded mock interview performance (0–100)
+                      </CardDescription>
+                    </div>
+                    {interviewStats && (
+                      <div className="flex gap-4 text-sm">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Avg</p>
+                          <p className="font-mono font-bold tabular-nums">
+                            {interviewStats.avg_score ?? "—"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Best</p>
+                          <p className="font-mono font-bold tabular-nums">
+                            {interviewStats.best_score ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {interviewSeries.length > 0 ? (
+                    <div className="h-[320px] sm:h-[380px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={interviewSeries}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                          <XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={axisStyle}
+                            tickLine={false}
+                            axisLine={false}
+                            width={32}
+                          />
+                          <Tooltip
+                            contentStyle={tooltipStyle}
+                            formatter={(v: number, _n, p) => [
+                              `${v}/100`,
+                              String(p?.payload?.type ?? "score").replace("_", " "),
+                            ]}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="score"
+                            name="Score"
+                            stroke="var(--chart-3)"
+                            strokeWidth={2}
+                            dot={{ r: 4, fill: "var(--chart-3)" }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Mic}
+                      title="No scored interviews yet"
+                      description="Complete a mock interview to start tracking your performance trend."
+                      className="border-0 bg-transparent p-8"
+                      action={
+                        <Button asChild>
+                          <Link href="/practice/mock-interviews">Start an interview</Link>
+                        </Button>
+                      }
                     />
                   )}
                 </CardContent>

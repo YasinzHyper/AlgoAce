@@ -494,6 +494,32 @@ async def generate_roadmap_feedback(
             roadmap, tasks_resp.data or [], progress_resp.data or [], now
         )
 
+        # Fold the latest mock-interview result into the coaching prompt so the
+        # AI Coach references it (Plan §7). Degrades silently if the table is
+        # missing on this deployment.
+        interview_line = ""
+        try:
+            iv_resp = (
+                supabase.table("interview_sessions")
+                .select("interview_type,overall_score,feedback,completed_at")
+                .eq("user_id", user_id)
+                .eq("status", "completed")
+                .order("completed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if iv_resp.data:
+                iv = iv_resp.data[0]
+                fb = iv.get("feedback") or {}
+                imps = [str(i) for i in (fb.get("improvements") or [])][:3]
+                interview_line = (
+                    f"\nLatest mock interview ({iv.get('interview_type')}): scored "
+                    f"{iv.get('overall_score')}/100. Key improvements flagged: "
+                    f"{'; '.join(imps) or 'none'}."
+                )
+        except Exception as e:
+            print(f"[feedback] interview context skipped: {str(e)}")
+
         weeks_summary = [
             f"Week {w['week']}: {w['completed']}/{w['total']} problems ({w['percentage']}%)"
             for w in snapshot["weeks"]
@@ -524,7 +550,7 @@ Per-week breakdown:
 
 Difficulty coverage: {', '.join(diff) or 'no problems assigned'}.
 Strongest topics so far: {', '.join(strong) or 'none yet'}.
-Topics needing attention: {', '.join(weak) or 'none identified yet'}.
+Topics needing attention: {', '.join(weak) or 'none identified yet'}.{interview_line}
 
 Respond with ONLY a JSON object:
 {{

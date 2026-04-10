@@ -23,6 +23,7 @@ import { cn } from "@/utils/supabase/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { useChallengeStats } from "@/hooks/use-challenges"
+import { useInterviewStats } from "@/hooks/use-interview"
 import { useLeaderboard } from "@/hooks/use-leaderboard"
 import type { PaceStatus } from "@/hooks/use-roadmap-progress"
 import {
@@ -37,6 +38,7 @@ import {
   LayoutDashboard,
   Map,
   Medal,
+  Mic,
   Play,
   Plus,
   Sparkles,
@@ -87,6 +89,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { data, loading, error, refresh } = useDashboard()
   const { stats: challengeStats } = useChallengeStats()
+  const { stats: interviewStats } = useInterviewStats()
   // Only used for the "Your rank" stat card; full board is rendered via <LeaderboardCard>.
   const { me: myRank } = useLeaderboard("week", 5)
 
@@ -170,7 +173,7 @@ export default function DashboardPage() {
       />
 
       {/* Headline stats */}
-      <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-5">
         <StatCard
           title="Problems Solved"
           value={totals.problems_solved}
@@ -197,6 +200,25 @@ export default function DashboardPage() {
             challengeStats
               ? `${challengeStats.completed} done · best ${challengeStats.best_score}`
               : undefined
+          }
+        />
+        <StatCard
+          title="Last Interview"
+          value={
+            interviewStats?.last?.overall_score != null
+              ? `${interviewStats.last.overall_score}/100`
+              : "—"
+          }
+          icon={Mic}
+          sparkle={(interviewStats?.last?.overall_score ?? 0) >= 80}
+          description={
+            interviewStats?.completed
+              ? `${interviewStats.completed} done${
+                  interviewStats.best_score != null
+                    ? ` · best ${interviewStats.best_score}`
+                    : ""
+                }`
+              : "not started"
           }
         />
         <StatCard
