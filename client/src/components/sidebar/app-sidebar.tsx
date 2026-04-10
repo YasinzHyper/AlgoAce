@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Code2, Home, LogOut, Map, Settings, Target, User } from "lucide-react"
+import { BarChart3, Code2, Home, LayoutDashboard, LogOut, Map, Settings, Target, User } from "lucide-react"
 import { logout } from "@/app/login/actions"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -35,6 +35,12 @@ const navigationItems = [
     title: "Home",
     icon: Home,
     href: "/",
+
+  },
+  {
+    title: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard",
 
   },
   {

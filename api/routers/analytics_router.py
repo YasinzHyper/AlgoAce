@@ -382,6 +382,113 @@ def _compute_roadmap_progress(roadmap: dict, tasks: list[dict], progress_entries
     }
 
 
+@router.get("/dashboard")
+async def get_dashboard(user=Depends(get_current_user)):
+    """
+    Single-shot aggregator for the `/dashboard` page so it renders without N
+    round-trips. Returns:
+      - `summary`     : the same payload as `/summary` (totals, weekly_progress,
+                        topic_mastery, recent_activity, ...)
+      - `roadmap`     : full `_compute_roadmap_progress` snapshot for the
+                        *active* roadmap (nearest upcoming deadline, falling
+                        back to most recently created), incl. `last_feedback`.
+                        `null` if the user has no roadmaps.
+      - `roadmap_count`: total roadmaps owned by the user.
+      - `next_task`   : `{roadmap_id, task_id, week, completed, total}` for the
+                        first incomplete week of the active roadmap, or `null`.
+
+    Challenge stats and leaderboard rank are intentionally *not* duplicated
+    here — the frontend already has dedicated hooks (`useChallengeStats`,
+    `useLeaderboard`) that hit `/api/challenges/*`, and those endpoints also
+    perform lazy stale-challenge cleanup as a side effect, so we want them
+    called directly.
+    """
+    try:
+        user_id = user.user.id
+        now = datetime.now(timezone.utc)
+
+        summary = await get_analytics_summary(user)
+
+        roadmaps_resp = (
+            supabase.table("roadmaps").select("*").eq("user_id", user_id).execute()
+        )
+        roadmaps = roadmaps_resp.data or []
+
+        active_roadmap = None
+        next_task = None
+        if roadmaps:
+            def deadline_key(r: dict):
+                dl = (r.get("user_input") or {}).get("deadline")
+                try:
+                    if dl:
+                        d = datetime.fromisoformat(str(dl).replace("Z", "+00:00"))
+                        if d.tzinfo is None:
+                            d = d.replace(tzinfo=timezone.utc)
+                        if d >= now:
+                            return (0, d.timestamp())
+                except Exception:
+                    pass
+                # No / past deadline → sort by recency, after all upcoming deadlines.
+                try:
+                    created = datetime.fromisoformat(
+                        str(r.get("created_at")).replace("Z", "+00:00")
+                    ).timestamp()
+                except Exception:
+                    created = 0
+                return (1, -created)
+
+            chosen = sorted(roadmaps, key=deadline_key)[0]
+            tasks_resp = (
+                supabase.table("tasks").select("*").eq("roadmap_id", chosen["id"]).execute()
+            )
+            progress_resp = (
+                supabase.table("progress")
+                .select("*")
+                .eq("roadmap_id", chosen["id"])
+                .eq("user_id", user_id)
+                .execute()
+            )
+            active_roadmap = _compute_roadmap_progress(
+                chosen, tasks_resp.data or [], progress_resp.data or [], now
+            )
+            try:
+                fb_resp = (
+                    supabase.table("roadmap_feedback")
+                    .select("*")
+                    .eq("roadmap_id", chosen["id"])
+                    .eq("user_id", user_id)
+                    .order("generated_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                active_roadmap["last_feedback"] = fb_resp.data[0] if fb_resp.data else None
+            except Exception as e:
+                print(f"[dashboard] roadmap_feedback lookup skipped: {str(e)}")
+                active_roadmap["last_feedback"] = None
+
+            for w in active_roadmap["weeks"]:
+                if (w.get("total") or 0) > 0 and w["completed"] < w["total"]:
+                    next_task = {
+                        "roadmap_id": chosen["id"],
+                        "task_id": w["task_id"],
+                        "week": w["week"],
+                        "completed": w["completed"],
+                        "total": w["total"],
+                    }
+                    break
+
+        return {
+            "summary": summary,
+            "roadmap": active_roadmap,
+            "roadmap_count": len(roadmaps),
+            "next_task": next_task,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error building dashboard: {str(e)}")
+
+
 @router.get("/roadmaps")
 async def get_all_roadmap_analytics(user=Depends(get_current_user)):
     """

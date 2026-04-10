@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +17,8 @@ import { Trophy, Target, BookOpen, Code2, Camera, Image as ImageIcon, Trash2, Fl
 import { ActivityCalendar } from "react-activity-calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/utils/supabase/utils";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/layout/stat-card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -45,6 +45,38 @@ export default function ProfilePage() {
     for (const d of analytics?.difficulty_distribution ?? []) m[d.name] = d.value;
     return m;
   }, [analytics]);
+  const totalSolved = totals?.problems_solved ?? 0;
+  const DIFFICULTY_STYLES: Record<
+    "Easy" | "Medium" | "Hard",
+    { dot: string; bar: string }
+  > = {
+    Easy: { dot: "bg-emerald-500", bar: "[&_[data-slot=progress-indicator]]:bg-emerald-500" },
+    Medium: { dot: "bg-amber-500", bar: "[&_[data-slot=progress-indicator]]:bg-amber-500" },
+    Hard: { dot: "bg-rose-500", bar: "[&_[data-slot=progress-indicator]]:bg-rose-500" },
+  };
+
+  // Stretch the contribution calendar to the full card width by deriving
+  // blockSize from the measured container. react-activity-calendar renders a
+  // fixed-width SVG, so without this it only fills ~60% on wide screens.
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [calendarBlockSize, setCalendarBlockSize] = useState(11);
+  useLayoutEffect(() => {
+    const el = calendarRef.current;
+    if (!el) return;
+    const WEEKS = 53;
+    const MARGIN = 3;
+    const LABEL_GUTTER = 32; // weekday labels + legend padding
+    const compute = () => {
+      const w = el.clientWidth;
+      if (w <= 0) return;
+      const size = Math.floor((w - LABEL_GUTTER - (WEEKS - 1) * MARGIN) / WEEKS);
+      setCalendarBlockSize(Math.max(9, Math.min(18, size)));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [analyticsLoading]);
   const topTopics = (analytics?.topic_mastery ?? []).slice(0, 6);
   const maxTopicValue = topTopics.reduce((max, t) => Math.max(max, t.value), 0) || 1;
   const recentActivity = analytics?.recent_activity ?? [];
@@ -400,20 +432,31 @@ export default function ProfilePage() {
               )}
             </TabsContent>
             <TabsContent value="difficulty" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(["Easy", "Medium", "Hard"] as const).map((level) => (
-                  <Card key={level}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{level}</Badge>
-                        <div>
-                          <p className="text-sm font-medium">Completed</p>
-                          <p className="text-2xl font-bold">{difficultyMap[level] ?? 0}</p>
-                        </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {(["Easy", "Medium", "Hard"] as const).map((level) => {
+                  const count = difficultyMap[level] ?? 0;
+                  const share = totalSolved > 0 ? Math.round((count / totalSolved) * 100) : 0;
+                  const styles = DIFFICULTY_STYLES[level];
+                  return (
+                    <Card key={level} className="gap-0 p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <span className={cn("size-2 rounded-full", styles.dot)} />
+                          {level}
+                        </span>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {share}%
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <p className="mt-2 text-3xl font-bold tabular-nums">{count}</p>
+                      <p className="text-xs text-muted-foreground">solved</p>
+                      <Progress
+                        value={share}
+                        className={cn("mt-3 h-1.5 bg-muted", styles.bar)}
+                      />
+                    </Card>
+                  );
+                })}
               </div>
             </TabsContent>
           </Tabs>
@@ -480,44 +523,47 @@ export default function ProfilePage() {
           <CardTitle>{totalContributions} contributions in the last year</CardTitle>
           <CardDescription>Problems and topics completed per day</CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {analyticsLoading || activityData.length === 0 ? (
-            <Skeleton className="h-[140px] w-full" />
-          ) : (
-          <ActivityCalendar
-            data={activityData}
-            blockSize={11}
-            blockMargin={3}
-            blockRadius={2}
-            fontSize={11}
-            maxLevel={4}
-            colorScheme={resolvedTheme === "dark" ? "dark" : "light"}
-            theme={{
-              light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
-              dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
-            }}
-            labels={{
-              legend: { less: "Less", more: "More" },
-              totalCount: "{{count}} contributions in the last year",
-            }}
-            showWeekdayLabels
-            hideTotalCount
-            renderBlock={(block, activity) => (
-              <Tooltip>
-                <TooltipTrigger asChild>{block}</TooltipTrigger>
-                <TooltipContent>
-                  {activity.count === 0 ? "No" : activity.count}{" "}
-                  {activity.count === 1 ? "contribution" : "contributions"} on{" "}
-                  {new Date(activity.date).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </TooltipContent>
-              </Tooltip>
+        <CardContent>
+          <div ref={calendarRef} className="w-full overflow-x-auto">
+            {analyticsLoading || activityData.length === 0 ? (
+              <Skeleton className="h-[160px] w-full" />
+            ) : (
+              <ActivityCalendar
+                data={activityData}
+                blockSize={calendarBlockSize}
+                blockMargin={3}
+                blockRadius={2}
+                fontSize={11}
+                maxLevel={4}
+                colorScheme={resolvedTheme === "dark" ? "dark" : "light"}
+                theme={{
+                  light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+                  dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+                }}
+                labels={{
+                  legend: { less: "Less", more: "More" },
+                  totalCount: "{{count}} contributions in the last year",
+                }}
+                style={{ width: "100%" }}
+                showWeekdayLabels
+                hideTotalCount
+                renderBlock={(block, activity) => (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{block}</TooltipTrigger>
+                    <TooltipContent>
+                      {activity.count === 0 ? "No" : activity.count}{" "}
+                      {activity.count === 1 ? "contribution" : "contributions"} on{" "}
+                      {new Date(activity.date).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              />
             )}
-          />
-          )}
+          </div>
         </CardContent>
       </Card>
     </div>

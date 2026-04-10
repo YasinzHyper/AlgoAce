@@ -138,6 +138,115 @@ def _score_challenge(
     }
 
 
+def _mirror_solves_to_completions(user_id: str, challenge: dict, solved_ids: list[int]) -> None:
+    """
+    Mirror challenge solves into `problem_completions` (idempotent) so they feed
+    analytics, streaks and the points-based leaderboard. task_id is NULL for
+    challenge-sourced rows. Non-fatal on older DBs that still have NOT NULL on
+    task_id — the error is logged and swallowed.
+    """
+    if not solved_ids:
+        return
+    try:
+        existing_resp = (
+            supabase.table("problem_completions")
+            .select("problem_id")
+            .eq("user_id", user_id)
+            .in_("problem_id", solved_ids)
+            .execute()
+        )
+        existing = {int(r["problem_id"]) for r in (existing_resp.data or [])}
+        rows = []
+        for pid in solved_ids:
+            if pid in existing:
+                continue
+            meta = _problem_detail(pid) or {}
+            topics = meta.get("related_topics") or []
+            rows.append(
+                {
+                    "user_id": user_id,
+                    "roadmap_id": challenge.get("roadmap_id"),
+                    "task_id": None,
+                    "problem_id": pid,
+                    "topic_name": topics[0] if topics else "General",
+                    "source": "challenge",
+                }
+            )
+        if rows:
+            supabase.table("problem_completions").insert(rows).execute()
+        supabase.rpc("refresh_user_streak", {"p_user_id": user_id}).execute()
+    except Exception as e:
+        print(f"[challenges] completion mirror skipped: {str(e)}")
+
+
+def _lazy_finalize_expired(user_id: str, rows: list[dict]) -> list[dict]:
+    """
+    Server-side sweep for stale-active challenges. Any row with status='active'
+    whose (started_at + duration_minutes) is in the past is scored and moved to
+    'completed' (or 'abandoned' if nothing was solved) so history, stats and the
+    leaderboard stay accurate even if the user closed the tab without
+    finalising. Returns `rows` with the updated entries patched in place.
+
+    Idempotent and non-fatal: any DB error is logged and the original row is
+    kept so read endpoints never fail because of this sweep.
+    """
+    if not rows:
+        return rows
+    now = datetime.now(timezone.utc)
+    out: list[dict] = []
+    for row in rows:
+        if row.get("status") != "active":
+            out.append(row)
+            continue
+        started_at = row.get("started_at")
+        duration_minutes = int(row.get("duration_minutes") or 0)
+        try:
+            sa = datetime.fromisoformat(str(started_at).replace("Z", "+00:00"))
+        except Exception:
+            out.append(row)
+            continue
+        elapsed_seconds = int((now - sa).total_seconds())
+        if duration_minutes <= 0 or elapsed_seconds < duration_minutes * 60:
+            out.append(row)
+            continue
+
+        # Expired — finalise server-side. Time bonus naturally resolves to 0.
+        problem_ids = [int(p) for p in (row.get("problem_ids") or [])]
+        solved_ids = [int(p) for p in (row.get("solved_problem_ids") or [])]
+        result = _score_challenge(
+            problem_ids=problem_ids,
+            solved_ids=solved_ids,
+            duration_minutes=duration_minutes,
+            elapsed_seconds=elapsed_seconds,
+        )
+        status = "abandoned" if result["solved"] == 0 else "completed"
+        completed_at = (sa.timestamp() + duration_minutes * 60)
+        try:
+            update_resp = (
+                supabase.table("challenges")
+                .update(
+                    {
+                        "status": status,
+                        "score": result["score"],
+                        "completed_at": datetime.fromtimestamp(
+                            completed_at, tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
+                .eq("id", row["id"])
+                .eq("user_id", user_id)
+                .eq("status", "active")  # guard against racing /complete
+                .execute()
+            )
+            updated = update_resp.data[0] if update_resp.data else {**row, "status": status, "score": result["score"]}
+            _mirror_solves_to_completions(user_id, row, solved_ids)
+            out.append(updated)
+        except Exception as e:
+            print(f"[challenges] lazy finalise skipped for {row.get('id')}: {str(e)}")
+            out.append(row)
+    return out
+
+
 def _hydrate_challenge(row: dict) -> dict:
     """Attach problem metadata + derived fields to a raw `challenges` row."""
     problem_ids = row.get("problem_ids") or []
@@ -214,7 +323,8 @@ async def list_challenges(limit: int = 20, user=Depends(get_current_user)):
             # Table may not exist yet on older deployments.
             print(f"[challenges] list skipped: {str(e)}")
             return {"challenges": []}
-        return {"challenges": [_hydrate_challenge(r) for r in (resp.data or [])]}
+        rows = _lazy_finalize_expired(user.user.id, resp.data or [])
+        return {"challenges": [_hydrate_challenge(r) for r in rows]}
     except HTTPException:
         raise
     except Exception as e:
@@ -331,7 +441,7 @@ async def get_challenge_stats(user=Depends(get_current_user)):
                 "active_challenge": None,
             }
 
-        rows = resp.data or []
+        rows = _lazy_finalize_expired(user.user.id, resp.data or [])
         completed = [r for r in rows if r.get("status") == "completed"]
         active = [r for r in rows if r.get("status") == "active"]
         abandoned = [r for r in rows if r.get("status") == "abandoned"]
@@ -478,7 +588,8 @@ async def get_challenge(challenge_id: int, user=Depends(get_current_user)):
         )
         if not resp.data:
             raise HTTPException(status_code=404, detail="Challenge not found")
-        return {"challenge": _hydrate_challenge(resp.data[0])}
+        rows = _lazy_finalize_expired(user.user.id, resp.data)
+        return {"challenge": _hydrate_challenge(rows[0])}
     except HTTPException:
         raise
     except Exception as e:
@@ -591,41 +702,9 @@ async def complete_challenge(
         if not update_resp.data:
             raise HTTPException(status_code=500, detail="Failed to finalise challenge")
 
-        # Mirror solves into problem_completions (idempotent) so they feed
-        # analytics + streaks + the points-based leaderboard. task_id/roadmap_id
-        # are nullable for challenge-sourced rows.
-        if solved_ids:
-            try:
-                existing_resp = (
-                    supabase.table("problem_completions")
-                    .select("problem_id")
-                    .eq("user_id", user_id)
-                    .in_("problem_id", solved_ids)
-                    .execute()
-                )
-                existing = {int(r["problem_id"]) for r in (existing_resp.data or [])}
-                rows = []
-                for pid in solved_ids:
-                    if pid in existing:
-                        continue
-                    meta = _problem_detail(pid) or {}
-                    topics = meta.get("related_topics") or []
-                    rows.append(
-                        {
-                            "user_id": user_id,
-                            "roadmap_id": challenge.get("roadmap_id"),
-                            "task_id": None,
-                            "problem_id": pid,
-                            "topic_name": topics[0] if topics else "General",
-                            "source": "challenge",
-                        }
-                    )
-                if rows:
-                    supabase.table("problem_completions").insert(rows).execute()
-                supabase.rpc("refresh_user_streak", {"p_user_id": user_id}).execute()
-            except Exception as e:
-                # Older DBs may still have NOT NULL on task_id; non-fatal.
-                print(f"[challenges] completion mirror skipped: {str(e)}")
+        # Mirror solves into problem_completions so they feed analytics +
+        # streaks + the points-based leaderboard.
+        _mirror_solves_to_completions(user_id, challenge, solved_ids)
 
         return {"challenge": _hydrate_challenge(update_resp.data[0]), "result": result}
     except HTTPException:
