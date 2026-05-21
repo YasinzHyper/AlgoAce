@@ -46,10 +46,20 @@ const knowledgeSchema = z.object({
 const formSchema = z.object({
   goal: z.string().min(1, "Goal is required"),
   deadline: z.date({ required_error: "Deadline is required" }),
+  subjects: z.enum(["dsa", "os", "both"]),
   current_knowledge: z.array(knowledgeSchema).min(1, "At least one knowledge area is required"),
   weekly_hours: z.number().min(1, "Weekly hours must be at least 1"),
   weeks: z.number().min(1, "Weeks must be at least 1"),
 })
+
+const OS_TOPIC_HINTS = [
+  "OS Introduction",
+  "Types of OS",
+  "Processes and Threads",
+  "CPU Scheduling",
+  "Deadlock",
+  "Virtual Memory",
+]
 
 export default function CreateRoadmapPage() {
   const [loading, setLoading] = useState(false)
@@ -61,11 +71,14 @@ export default function CreateRoadmapPage() {
     defaultValues: {
       goal: "",
       deadline: undefined,
+      subjects: "both",
       current_knowledge: [{ topic: "", level: "Basic" }],
       weekly_hours: 10,
       weeks: 1,
     },
   })
+
+  const subjects = form.watch("subjects")
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -91,6 +104,7 @@ export default function CreateRoadmapPage() {
       const apiData = {
         goal: data.goal,
         deadline: formattedDeadline,
+        subjects: data.subjects,
         current_knowledge: knowledgeJson,
         weekly_hours: data.weekly_hours,
         weeks: data.weeks,
@@ -206,8 +220,47 @@ export default function CreateRoadmapPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="subjects"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>What do you want to focus on?</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subjects" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="dsa">
+                          Data Structures & Algorithms (LeetCode)
+                        </SelectItem>
+                        <SelectItem value="os">Operating Systems</SelectItem>
+                        <SelectItem value="both">DSA + Operating Systems</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      {subjects === "dsa" &&
+                        "Weekly LeetCode problems only."}
+                      {subjects === "os" &&
+                        "OS readings and questions from the CodeHelp curriculum."}
+                      {subjects === "both" &&
+                        "Split time between LeetCode and OS study items each week."}
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="space-y-3">
                 <FormLabel>Current Knowledge</FormLabel>
+                <p className="text-sm text-muted-foreground">
+                  {subjects === "os"
+                    ? `OS examples: ${OS_TOPIC_HINTS.join(", ")}`
+                    : subjects === "dsa"
+                      ? "DSA examples: Arrays, Graphs, Dynamic Programming"
+                      : "DSA topics and OS areas (e.g. CPU Scheduling, Virtual Memory)"}
+                </p>
                 <div className="space-y-3">
                   {fields.map((f, index) => (
                     <div
@@ -221,7 +274,11 @@ export default function CreateRoadmapPage() {
                           <FormItem className="flex-1">
                             <FormControl>
                               <Input
-                                placeholder="Topic (e.g., Graphs)"
+                                placeholder={
+                                  subjects === "os"
+                                    ? "Topic (e.g., CPU Scheduling)"
+                                    : "Topic (e.g., Graphs)"
+                                }
                                 {...field}
                               />
                             </FormControl>

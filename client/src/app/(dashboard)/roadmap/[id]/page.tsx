@@ -26,6 +26,7 @@ interface UserInput {
   deadline: string | null
   weeks: number
   company?: string
+  subjects?: 'dsa' | 'os' | 'both'
 }
 
 interface Roadmap {
@@ -111,10 +112,17 @@ const RoadmapDetailPage = () => {
         setRoadmap(data)
 
         // Transform roadmap data into React Flow nodes
+        const subjects = data.user_input?.subjects ?? 'both'
+        const osLabel =
+          subjects === 'os' ? 'Operating Systems' : 'Fundamentals (OS & more)'
+
         const roadmapNodes: Node[] = data.roadmap_data.map((weekData, index) => {
           const topics = [
             { category: 'DSA', items: weekData.DSA ? Object.entries(weekData.DSA) : [] },
-            { category: 'Other', items: weekData.Other ? Object.entries(weekData.Other) : [] },
+            {
+              category: osLabel,
+              items: weekData.Other ? Object.entries(weekData.Other) : [],
+            },
           ].filter((section) => section.items.length > 0)
 
           return {

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Toaster, toast } from 'sonner'
 import RoadmapSelector from '@/components/problems/RoadmapSelector'
 import ProblemCard from '@/components/problems/ProblemCard'
+import StudyItemCard, { type OsStudyItem } from '@/components/problems/StudyItemCard'
 import WeekPagination from '@/components/problems/WeekPagination'
 import { PageHeader } from '@/components/layout/page-header'
 import { EmptyState } from '@/components/layout/empty-state'
@@ -25,6 +26,7 @@ import {
   SearchX,
   Sparkles,
   Target,
+  BookOpen,
 } from 'lucide-react'
 
 const LAST_ROADMAP_KEY = 'algoace:last-problems-roadmap'
@@ -54,6 +56,7 @@ interface Roadmap {
   user_input: {
     goal: string
     weeks: number
+    subjects?: 'dsa' | 'os' | 'both'
   }
 }
 
@@ -62,6 +65,8 @@ interface Task {
   week: number
   lc_problem_ids: number[]
   other_topics: string[]
+  os_item_ids?: number[]
+  os_items?: OsStudyItem[]
 }
 
 interface ProgressEntry {
@@ -70,6 +75,7 @@ interface ProgressEntry {
   completed: {
     problems: Record<string, boolean>
     topics: Record<string, boolean>
+    os_items?: Record<string, boolean>
   }
   completed_problem_count: number
   total_problem_count: number
@@ -95,8 +101,10 @@ export default function ProblemsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
   const [topicFilter, setTopicFilter] = useState<string>('all')
+  const [osTopicFilter, setOsTopicFilter] = useState<string>('all')
   const [progressByTask, setProgressByTask] = useState<Record<number, ProgressEntry>>({})
   const [pendingProblemId, setPendingProblemId] = useState<number | null>(null)
+  const [pendingOsItemId, setPendingOsItemId] = useState<number | null>(null)
   const [feedbackByTask, setFeedbackByTask] = useState<Record<number, WeekFeedback>>({})
   const [feedbackLoadingTaskId, setFeedbackLoadingTaskId] = useState<number | null>(null)
   const searchParams = useSearchParams()
@@ -382,9 +390,85 @@ export default function ProblemsPage() {
     }
   }
 
+  const handleToggleOsComplete = async (
+    taskId: number,
+    itemId: number,
+    checked: boolean
+  ) => {
+    setPendingOsItemId(itemId)
+    setProgressByTask((prev) => {
+      const entry = prev[taskId]
+      if (!entry) return prev
+      const osItems = { ...(entry.completed.os_items ?? {}), [String(itemId)]: checked }
+      return {
+        ...prev,
+        [taskId]: {
+          ...entry,
+          completed: { ...entry.completed, os_items: osItems },
+        },
+      }
+    })
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+
+      const response = await fetch(
+        `http://localhost:8000/api/progress/task/${taskId}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'os_item',
+            id: String(itemId),
+            completed: checked,
+          }),
+        }
+      )
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      const { progress } = await response.json()
+      setProgressByTask((prev) => ({ ...prev, [taskId]: progress }))
+      toast.success(checked ? 'OS item completed' : 'Marked incomplete')
+    } catch (error) {
+      setProgressByTask((prev) => {
+        const entry = prev[taskId]
+        if (!entry) return prev
+        const osItems = {
+          ...(entry.completed.os_items ?? {}),
+          [String(itemId)]: !checked,
+        }
+        return {
+          ...prev,
+          [taskId]: {
+            ...entry,
+            completed: { ...entry.completed, os_items: osItems },
+          },
+        }
+      })
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setPendingOsItemId(null)
+    }
+  }
+
+  const subjectFocus = selectedRoadmap?.user_input?.subjects ?? 'both'
+  const showDsa = subjectFocus === 'dsa' || subjectFocus === 'both'
+  const showOs = subjectFocus === 'os' || subjectFocus === 'both'
+
   // Update current week's problems when tasks or week changes
   useEffect(() => {
-    if (!problemDataset || !tasks.length) return
+    if (!tasks.length) return
+    const needsDsa = !selectedRoadmap || selectedRoadmap.user_input?.subjects !== 'os'
+    if (needsDsa && !problemDataset) return
 
     const weekTask = tasks.find(task => task.week === currentWeek)
     if (!weekTask) {
@@ -402,7 +486,7 @@ export default function ProblemsPage() {
       }))
 
     setCurrentWeekProblems(problemDetails)
-  }, [tasks, currentWeek, problemDataset])
+  }, [tasks, currentWeek, problemDataset, selectedRoadmap])
 
   // Apply filters to current week's problems
   const filteredProblems = currentWeekProblems.filter(problem => {
@@ -445,11 +529,21 @@ export default function ProblemsPage() {
 
   const weekTask = tasks.find(task => task.week === currentWeek)
   const otherTopics = weekTask ? weekTask.other_topics : []
+  const osItems = weekTask?.os_items ?? []
   const weekProgress = weekTask ? progressByTask[weekTask.id] : undefined
+  const osCompletedCount = weekProgress?.completed?.os_items
+    ? Object.values(weekProgress.completed.os_items).filter(Boolean).length
+    : 0
+  const osTotalCount = osItems.length
   const weekCompletedCount = weekProgress?.completed_problem_count ?? 0
   const weekTotalCount = weekProgress?.total_problem_count ?? currentWeekProblems.length
   const weekFeedback = weekTask ? feedbackByTask[weekTask.id] : undefined
   const weekFeedbackLoading = weekTask ? feedbackLoadingTaskId === weekTask.id : false
+
+  // Filter OS items by topic (after osItems is defined)
+  const filteredOsItems = osTopicFilter === 'all'
+    ? osItems
+    : osItems.filter(item => item.topic.toLowerCase() === osTopicFilter.toLowerCase())
 
   return (
     <div className="space-y-8">
@@ -487,6 +581,7 @@ export default function ProblemsPage() {
               )}
             </div>
           </div>
+          {showDsa && (
           <div className="flex flex-col gap-3 md:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -523,45 +618,121 @@ export default function ProblemsPage() {
               </SelectContent>
             </Select>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {filteredProblems.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredProblems.map((problem) => (
-                <ProblemCard
-                  key={problem.id}
-                  problem={problem}
-                  taskId={weekTask?.id}
-                  completed={weekProgress?.completed?.problems?.[String(problem.id)] ?? false}
-                  pending={pendingProblemId === problem.id}
-                  onToggleComplete={
-                    weekTask
-                      ? (checked) => handleToggleComplete(weekTask.id, problem.id, checked)
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={SearchX}
-              title="No problems match your filters"
-              description="Try clearing your search or selecting a different difficulty."
-              className="border-0 bg-transparent p-8"
-            />
           )}
-          {otherTopics.length > 0 && (
-            <div className="rounded-lg border bg-muted/40 p-4">
-              <h4 className="mb-2 text-sm font-semibold">
-                Additional topics this week
-              </h4>
-              <div className="flex flex-wrap gap-1.5">
-                {otherTopics.map((topic, idx) => (
-                  <Badge key={idx} variant="outline">
-                    {topic}
-                  </Badge>
-                ))}
+        </CardHeader>
+        <CardContent className="space-y-8">
+          {showDsa && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">DSA (LeetCode)</h3>
+              {filteredProblems.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredProblems.map((problem) => (
+                    <ProblemCard
+                      key={problem.id}
+                      problem={problem}
+                      taskId={weekTask?.id}
+                      completed={
+                        weekProgress?.completed?.problems?.[String(problem.id)] ?? false
+                      }
+                      pending={pendingProblemId === problem.id}
+                      onToggleComplete={
+                        weekTask
+                          ? (checked) =>
+                              handleToggleComplete(weekTask.id, problem.id, checked)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={SearchX}
+                  title="No problems match your filters"
+                  description={
+                    currentWeekProblems.length === 0
+                      ? 'No LeetCode problems assigned for this week.'
+                      : 'Try clearing your search or selecting a different difficulty.'
+                  }
+                  className="border-0 bg-transparent p-8"
+                />
+              )}
+            </div>
+          )}
+
+          {showOs && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold">Operating Systems</h3>
+                  {osTotalCount > 0 && (
+                    <Badge variant="outline">
+                      {osCompletedCount}/{osTotalCount} items done
+                    </Badge>
+                  )}
+                </div>
+                <Select value={osTopicFilter} onValueChange={setOsTopicFilter}>
+                  <SelectTrigger className="md:w-[200px]">
+                    <SelectValue placeholder="Filter by topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All topics</SelectItem>
+                    <SelectItem value="os introduction">OS Introduction</SelectItem>
+                    <SelectItem value="types of os">Types of OS</SelectItem>
+                    <SelectItem value="processes and threads">Processes and Threads</SelectItem>
+                    <SelectItem value="cpu scheduling">CPU Scheduling</SelectItem>
+                    <SelectItem value="process management">Process Management</SelectItem>
+                    <SelectItem value="concurrency">Concurrency</SelectItem>
+                    <SelectItem value="synchronization">Synchronization</SelectItem>
+                    <SelectItem value="deadlock">Deadlock</SelectItem>
+                    <SelectItem value="os architecture">OS Architecture</SelectItem>
+                    <SelectItem value="memory basics">Memory Basics</SelectItem>
+                    <SelectItem value="memory allocation">Memory Allocation</SelectItem>
+                    <SelectItem value="paging and segmentation">Paging and Segmentation</SelectItem>
+                    <SelectItem value="virtual memory">Virtual Memory</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {filteredOsItems.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredOsItems.map((item) => (
+                    <StudyItemCard
+                      key={item.id}
+                      item={item}
+                      taskId={weekTask?.id}
+                      completed={
+                        weekProgress?.completed?.os_items?.[String(item.id)] ?? false
+                      }
+                      pending={pendingOsItemId === item.id}
+                      onToggleComplete={
+                        weekTask
+                          ? (checked) =>
+                              handleToggleOsComplete(weekTask.id, item.id, checked)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={BookOpen}
+                  title={osItems.length === 0 ? "No OS study items this week" : "No items match this topic"}
+                  description={
+                    osItems.length === 0
+                      ? "Regenerate the roadmap or pick a week with OS topics in your plan."
+                      : "Try selecting a different topic."
+                  }
+                  className="border-0 bg-transparent p-6"
+                />
+              )}
+              {otherTopics.length > 0 && osItems.length === 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {otherTopics.map((topic, idx) => (
+                    <Badge key={idx} variant="outline">
+                      {topic}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardContent>

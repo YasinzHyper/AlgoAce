@@ -433,3 +433,11 @@ CREATE INDEX IF NOT EXISTS idx_is_user_created
   ON public.interview_sessions (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_is_user_status
   ON public.interview_sessions (user_id, status);
+
+-- ============================================================================
+-- Migration: Operating Systems study items on tasks
+-- Weekly OS catalog item IDs (CodeHelp seed); progress.completed.os_items JSON
+-- Idempotent / additive.
+-- ============================================================================
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS os_item_ids bigint[] NOT NULL DEFAULT '{}';

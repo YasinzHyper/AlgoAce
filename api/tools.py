@@ -10,6 +10,14 @@ import math
 import pandas as pd
 from typing import List, Dict, Optional
 
+from dataset.os_loader import DIFF_MAP, OS_TOPICS, get_os_dataframe, normalize_topic
+
+# Validate GEMINI_API_KEY at import time
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY is not set! Roadmap generation will fail.")
+else:
+    print("DEBUG: GEMINI_API_KEY is configured")
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 def extract_json_str(roadmap:str) -> json:
@@ -41,41 +49,76 @@ class RoadmapTool(BaseTool):
     description: str = "Generates a personalized DSA roadmap using Gemini API."
     
     def _run(self, user_input: dict) -> json:
-        json_example = """
-        {   
-            "company" : "google"
-            "roadmap_data": [
-                {
-                    "week": 1,
-                    "DSA": {"Arrays": "Intermediate", "Linked Lists": "Basic"},
-                    "Other": {"Operating Systems": "Advanced"}
-                },
-                {
-                    "week": 2,
-                    "DSA": {"Graphs": "Advanced"},
-                    "Other": {"Computer Networks": "Intermediate"}
-                }
-            ]
-        }
-        """
+        subjects = user_input.get("subjects", "both")
+        os_topic_list = ", ".join(OS_TOPICS)
+
+        if subjects == "dsa":
+            structure_note = (
+                "The user chose DSA ONLY. Each week must have a non-empty \"DSA\" object. "
+                "Omit \"Other\" or use an empty object {} for every week."
+            )
+            json_example = """
+            {
+                "company": "google",
+                "roadmap_data": [
+                    {"week": 1, "DSA": {"Arrays": "Intermediate", "Linked Lists": "Basic"}, "Other": {}}
+                ]
+            }
+            """
+        elif subjects == "os":
+            structure_note = (
+                "The user chose OPERATING SYSTEMS ONLY. Each week must have a non-empty \"Other\" object "
+                f"using ONLY these OS topic keys (granular subtopics): {os_topic_list}. "
+                "Omit \"DSA\" or use {} for every week."
+            )
+            json_example = """
+            {
+                "company": "",
+                "roadmap_data": [
+                    {"week": 1, "DSA": {}, "Other": {"OS Introduction": "Basic", "Types of OS": "Basic"}}
+                ]
+            }
+            """
+        else:
+            structure_note = (
+                "The user chose DSA + OS (both). Each week should include both \"DSA\" LeetCode topics "
+                f"and \"Other\" OS topics from this list: {os_topic_list}. Balance weeks across the plan."
+            )
+            json_example = """
+            {
+                "company": "google",
+                "roadmap_data": [
+                    {
+                        "week": 1,
+                        "DSA": {"Arrays": "Intermediate"},
+                        "Other": {"Process Scheduling": "Basic", "Virtual Memory": "Intermediate"}
+                    }
+                ]
+            }
+            """
+
         prompt = f"""
         Generate a personalized learning roadmap for the user based on the following details:
 
         - Goal: {user_input['goal']}
+        - Subject focus: {subjects}
         - Number of weeks: {user_input['weeks']}
         - Weekly time available: {user_input['weekly_hours']} hours
-        - Current knowledge: {json.dumps(user_input['current_knowledge'])}
+        - Current knowledge: {json.dumps(user_input.get('current_knowledge') or {})}
 
-        Note: If the user mentions one or more company names in their goal, make sure to take those into consideration too for creating the roadmap.
-        
-        The roadmap should be a JSON array where each element represents a week's plan. Each week's plan should include DSA topics with their difficulty levels (Basic, Intermediate, Advanced) and, if applicable, non-DSA items with their levels. For example:
+        {structure_note}
+
+        Note: If the user mentions company names in their goal, include them in the "company" field (comma-separated).
+
+        Example JSON structure:
 
         {json_example}
 
-        Note: 
-        - The company field can be empty if the user did not mention any company name in the "Goal" field, and if they mention more than one company then separate them by commas and include them into the "company" field (e.g, "google, facebook, netflix").
-        - The example is not exhaustive, and it is only provided for the structure of the JSON response. (the number of weeks, number of topics, etc. can vary based on the user input) 
-        - Ensure the response is a valid JSON array in this exact format without any extra markdown formatting (return it in plaintext format).
+        Rules:
+        - Return valid JSON with keys "company" (string, may be empty) and "roadmap_data" (array of week objects).
+        - Each week object has "week" (int), "DSA" (object topic->level), "Other" (object topic->level).
+        - Levels are only: Basic, Intermediate, Advanced.
+        - No markdown fences; plaintext JSON only.
         """
         try:
             response = client.models.generate_content(
@@ -133,19 +176,23 @@ class ProblemRecommendationTool(BaseTool):
         diff_map = {"Basic": "Easy", "Intermediate": "Medium", "Advanced": "Hard"}
         time_per_problem = {"Easy": 1/3, "Medium": 2/3, "Hard": 1}  # Hours (20, 40, 60 minutes)
 
+        subjects = (user_input or {}).get("subjects", "both")
+        if subjects == "os":
+            return []
+
         result = []
         for week_data in roadmap_data:
             week = week_data.get("week")
-            dsa_topics = week_data.get("DSA", {})
-            # Extract other topics from "Other" field in roadmap_data
-            other_topics = list(week_data.get("Other", {}).keys()) if week_data.get("Other") else []
-            num_topics = len(dsa_topics)
-            if num_topics == 0:
-                continue  # Skip weeks with no DSA topics
+            dsa_topics = week_data.get("DSA") or {}
+            other_topics = list((week_data.get("Other") or {}).keys())
+            if not dsa_topics:
+                continue
 
-            # Allocate time equally among topics
+            num_dsa = len(dsa_topics)
+            num_other = len(other_topics) if subjects == "both" else 0
+            num_topics = max(num_dsa + num_other, num_dsa)
             time_per_topic = weekly_hours / num_topics
-            weekly = {"week": week, "problems": [], "other_topics": other_topics}
+            weekly = {"week": week, "problems": [], "other_topics": other_topics, "os_item_ids": []}
 
             for topic, level in dsa_topics.items():
                 # Map difficulty
@@ -178,10 +225,125 @@ class ProblemRecommendationTool(BaseTool):
                 problem_ids = df_filtered["id"].head(num_problems).tolist()
                 weekly["problems"].extend(problem_ids)
 
-            if weekly["problems"]:  # Only append weeks with recommendations
+            if weekly["problems"]:
                 result.append(weekly)
 
-        return result                                   
+        return result
+
+
+class OSRecommendationTool(BaseTool):
+    """Recommend OS study items from the CodeHelp seed catalog."""
+
+    name: str = "OS Recommendation Tool"
+    description: str = "Recommends OS readings and questions per week from os-study-items.csv."
+
+    def _run(
+        self,
+        roadmap_data: List[Dict],
+        company: Optional[str] = None,
+        user_input: Optional[Dict] = None,
+    ) -> List[Dict]:
+        if user_input is None or "weekly_hours" not in user_input:
+            raise ValueError("user_input must contain 'weekly_hours'")
+        subjects = user_input.get("subjects", "both")
+        if subjects == "dsa":
+            return []
+
+        weekly_hours = user_input["weekly_hours"]
+        df = get_os_dataframe()
+        result = []
+
+        for week_data in roadmap_data:
+            week = week_data.get("week")
+            os_topics = week_data.get("Other") or {}
+            dsa_topics = week_data.get("DSA") or {}
+            if not os_topics:
+                continue
+
+            other_keys = list(os_topics.keys())
+            num_dsa = len(dsa_topics) if subjects == "both" else 0
+            num_topics = max(len(os_topics) + num_dsa, len(os_topics))
+            time_per_topic = weekly_hours / num_topics
+            hours_per_item = 0.5
+
+            weekly = {
+                "week": week,
+                "problems": [],
+                "other_topics": other_keys,
+                "os_item_ids": [],
+            }
+            used_ids: set = set()
+
+            for topic, level in os_topics.items():
+                diff = DIFF_MAP.get(level, "Easy")
+                norm = normalize_topic(topic)
+                def _matches(row_norm: str) -> bool:
+                    if not row_norm:
+                        return False
+                    return row_norm == norm or norm in row_norm or row_norm in norm
+
+                pool = df[
+                    (df["difficulty"] == diff)
+                    & (df["normalized_topic"].apply(_matches))
+                ]
+                if pool.empty:
+                    pool = df[df["normalized_topic"].apply(_matches)]
+                if pool.empty:
+                    pool = df[df["topic"].str.lower().str.contains(norm.split()[0], na=False)]
+
+                max_items = max(1, min(3, math.floor(time_per_topic / hours_per_item)))
+                for item_type in ("reading", "question"):
+                    subset = pool[pool["type"] == item_type]
+                    if subset.empty:
+                        subset = pool
+                    for item_id in subset["id"].tolist():
+                        if item_id in used_ids:
+                            continue
+                        weekly["os_item_ids"].append(int(item_id))
+                        used_ids.add(item_id)
+                        if len([i for i in weekly["os_item_ids"]]) >= max_items:
+                            break
+                    if len(weekly["os_item_ids"]) >= max_items:
+                        break
+
+            if weekly["os_item_ids"] or other_keys:
+                result.append(weekly)
+
+        return result
+
+
+def merge_week_recommendations(
+    lc_weeks: List[Dict], os_weeks: List[Dict]
+) -> List[Dict]:
+    """Merge LeetCode and OS weekly recommendations by week number."""
+    by_week: Dict[int, Dict] = {}
+    for w in lc_weeks or []:
+        week = w["week"]
+        by_week[week] = {
+            "week": week,
+            "problems": w.get("problems", []),
+            "other_topics": w.get("other_topics", []),
+            "os_item_ids": w.get("os_item_ids", []),
+        }
+    for w in os_weeks or []:
+        week = w["week"]
+        if week in by_week:
+            existing = by_week[week]
+            existing["other_topics"] = list(
+                dict.fromkeys(existing.get("other_topics", []) + w.get("other_topics", []))
+            )
+            existing["os_item_ids"] = w.get("os_item_ids", [])
+            if not existing.get("problems"):
+                existing["problems"] = w.get("problems", [])
+        else:
+            by_week[week] = {
+                "week": week,
+                "problems": w.get("problems", []),
+                "other_topics": w.get("other_topics", []),
+                "os_item_ids": w.get("os_item_ids", []),
+            }
+    return sorted(by_week.values(), key=lambda x: x["week"])
+
 
 # class ProblemRecommendationTool(BaseTool):
 #     name: str = "Problem Recommendation Tool"

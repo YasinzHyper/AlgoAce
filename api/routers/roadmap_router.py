@@ -59,10 +59,19 @@ async def get_roadmap(roadmap_id: int, user=Depends(get_current_user)):
 async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)):
     try:
         # path = dsa_crew.create_learning_path(user_input.dict())
+        print(f"DEBUG: Starting roadmap generation for user {user.user.id}")
+        print(f"DEBUG: User input: {user_input.model_dump()}")
+        
         tool = RoadmapTool()
+        print("DEBUG: RoadmapTool initialized successfully")
+        
         roadmap_json = tool._run(user_input.model_dump())
+        print(f"DEBUG: Roadmap generated: {roadmap_json}")
+        
         if "error" in roadmap_json:
+            print(f"DEBUG: Error in roadmap_json: {roadmap_json['error']}")
             raise HTTPException(status_code=500, detail=roadmap_json["error"])
+        
         roadmap_data = {
             "user_id": user.user.id,
             "user_input": user_input.model_dump(),
@@ -71,12 +80,17 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
         }
         if "company" in roadmap_json:
             roadmap_data["company"] = roadmap_json["company"]
+        
+        print("DEBUG: Saving roadmap to database")
         response = supabase.table("roadmaps").insert(roadmap_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to save roadmap")
         
         roadmap_id = response.data[0]['id']
+        print(f"DEBUG: Roadmap saved with ID: {roadmap_id}")
+        
         # Automate problem recommendation
+        print("DEBUG: Generating problem recommendations")
         generate_and_save_recommendations(
             roadmap_id=roadmap_id,
             roadmap_data=roadmap_json["roadmap_data"],
@@ -84,10 +98,16 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
             user_input=user_input.model_dump(),
             user_id=user.user.id
         )
+        print("DEBUG: Recommendations generated successfully")
 
         print(roadmap_json)
         return roadmap_json
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERROR in generate_roadmap: {error_trace}")
         raise HTTPException(status_code=500, detail=f"Error generating roadmap: {str(e)}")
     
     # to run the crew:
@@ -100,13 +120,42 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
 @router.delete("/{roadmap_id}")
 async def delete_roadmap(roadmap_id: int, user=Depends(get_current_user)):
     """
-    Delete a specific roadmap by ID
+    Delete a specific roadmap by ID (and associated data)
     """
     try:
+        import os
+        
         # First check if roadmap exists and belongs to user
         response = supabase.table("roadmaps").select("id").eq("id", roadmap_id).eq("user_id", user.user.id).execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+        # Delete associated tasks first (foreign key constraint)
+        try:
+            supabase.table("tasks").delete().eq("roadmap_id", roadmap_id).execute()
+        except Exception as e:
+            print(f"Warning: Could not delete tasks: {e}")
+        
+        # Delete associated progress records
+        try:
+            supabase.table("progress").delete().eq("roadmap_id", roadmap_id).execute()
+        except Exception as e:
+            print(f"Warning: Could not delete progress: {e}")
+        
+        # Delete metadata file if exists
+        try:
+            metadata_file = os.path.join(
+                os.path.dirname(__file__), 
+                "..", 
+                "data", 
+                "roadmap_metadata", 
+                f"roadmap_{roadmap_id}_os.json"
+            )
+            if os.path.exists(metadata_file):
+                os.remove(metadata_file)
+                print(f"Deleted metadata file: {metadata_file}")
+        except Exception as e:
+            print(f"Warning: Could not delete metadata file: {e}")
         
         # Delete the roadmap
         delete_response = supabase.table("roadmaps").delete().eq("id", roadmap_id).eq("user_id", user.user.id).execute()

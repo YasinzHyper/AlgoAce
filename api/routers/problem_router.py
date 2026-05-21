@@ -10,6 +10,59 @@ import pandas as pd
 
 router = APIRouter()
 
+
+def _enrich_task(task: dict, roadmap_id: int = None) -> dict:
+    """Enrich task with full OS item details from local data."""
+    from dataset.os_loader import hydrate_os_items
+    import os
+    import json
+
+    enriched = dict(task)
+    
+    # First check if os_item_ids are stored in other_topics as "OS_ITEM_ID:123"
+    other_topics = enriched.get("other_topics") or []
+    os_item_ids = []
+    remaining_topics = []
+    
+    for topic in other_topics:
+        if isinstance(topic, str) and topic.startswith("OS_ITEM_ID:"):
+            try:
+                os_id = int(topic.replace("OS_ITEM_ID:", ""))
+                os_item_ids.append(os_id)
+            except ValueError:
+                remaining_topics.append(topic)
+        else:
+            remaining_topics.append(topic)
+    
+    # Update other_topics to exclude OS_ITEM_ID entries
+    enriched["other_topics"] = remaining_topics
+    
+    # Try to load os_item_ids from metadata file as fallback
+    if not os_item_ids and roadmap_id:
+        metadata_file = os.path.join(
+            os.path.dirname(__file__), 
+            "..", 
+            "data", 
+            "roadmap_metadata", 
+            f"roadmap_{roadmap_id}_os.json"
+        )
+        if os.path.exists(metadata_file):
+            try:
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                    week = task.get("week")
+                    if week and str(week) in metadata:
+                        os_item_ids = metadata[str(week)]
+            except Exception as e:
+                print(f"Warning: Could not load OS metadata: {e}")
+    
+    if os_item_ids:
+        enriched["os_items"] = hydrate_os_items(os_item_ids)
+    else:
+        enriched["os_items"] = []
+    return enriched
+
+
 # Load the problems dataset
 try:
     problems_df = pd.read_csv('dataset/leetcode-problems.csv')
@@ -320,7 +373,8 @@ async def get_all_problems(roadmap_id: int, user=Depends(get_current_user)):
 
         # Fetch all tasks for the roadmap
         tasks_response = supabase.table("tasks").select("*").eq("roadmap_id", roadmap_id).execute()
-        return {"tasks": tasks_response.data if tasks_response.data else []}
+        tasks = [_enrich_task(t, roadmap_id) for t in (tasks_response.data or [])]
+        return {"tasks": tasks}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching tasks: {str(e)}")
@@ -353,7 +407,7 @@ async def get_week_problems(roadmap_id: int, week: int, user=Depends(get_current
         if not task_response.data:
             raise HTTPException(status_code=404, detail="Task not found for the specified week")
 
-        return {"task": task_response.data[0]}
+        return {"task": _enrich_task(task_response.data[0], roadmap_id)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching task: {str(e)}")

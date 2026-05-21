@@ -1,0 +1,47 @@
+id,title,type,topic,difficulty,body,url,estimated_minutes,lecture
+1,What is an Operating System?,reading,OS Introduction,Easy,An OS manages hardware and software resources and provides a convenient environment to run programs by hiding hardware complexity. It acts as a resource manager.,,20,Unit-1
+2,Why do we need an OS?,question,OS Introduction,Easy,"List three problems if there were no OS: bulky apps with hardware code, resource exploitation by one app, and no memory protection.",,25,Unit-1
+3,OS goals and resource management,concept,OS Introduction,Easy,"Name two classic OS goals (e.g. maximum CPU utilization, less starvation).",,15,Unit-1
+4,Batch vs multiprogramming OS,reading,Types of OS,Easy,Batch OS groups similar jobs; multiprogramming keeps multiple jobs in memory so CPU stays busy when one job waits on I/O.,,25,LEC-2
+5,Multitasking vs multiprocessing,reading,Types of OS,Medium,"Multitasking: one CPU, time-sharing. Multiprocessing: multiple CPUs, better throughput and reliability.",,25,LEC-2
+6,RTOS vs general-purpose OS,question,Types of OS,Medium,Give two examples of real-time systems and why timing guarantees matter.,,30,LEC-2
+7,Program vs process vs thread,reading,Processes and Threads,Easy,Program: compiled code on disk. Process: program in execution in RAM. Thread: lightweight execution path within a process.,,25,LEC-3
+8,Thread vs process context switch,reading,Processes and Threads,Medium,Thread switch saves PC/registers/stack within same address space; process switch also switches memory space and flushes cache.,,25,LEC-3
+9,Multitasking vs multithreading,question,Processes and Threads,Medium,Compare isolation: processes have memory protection; threads in a process share memory.,,30,LEC-3
+10,Kernel vs user space,reading,OS Architecture,Easy,Kernel interacts with hardware; user space runs applications via system calls without direct hardware access.,,20,LEC-4
+11,Monolithic vs micro vs hybrid kernel,reading,OS Architecture,Medium,"Monolithic: all services in kernel (fast, less modular). Micro: minimal kernel, services in user space (modular, slower IPC). Hybrid: e.g. Windows, macOS.",,30,LEC-4
+12,Kernel responsibilities,question,OS Architecture,Medium,"Name the four classic kernel functions: process, memory, file, and I/O management.",,25,LEC-4
+13,What is a system call?,reading,OS Architecture,Easy,"A system call lets user programs request kernel services (files, processes, devices) via a controlled trap from user mode to kernel mode.",,20,LEC-5
+14,System call categories,question,OS Architecture,Medium,"List five system call types: process control, file, device, information, communication.",,30,LEC-5
+15,Boot sequence overview,reading,OS Architecture,Easy,Power on -> firmware (BIOS/UEFI POST) -> bootloader (MBR/EFI) -> kernel -> user space.,,20,LEC-6
+16,32-bit vs 64-bit OS,reading,Memory Basics,Easy,32-bit: ~4GB addressable per process typical limit. 64-bit: vastly larger virtual address space and can run more RAM efficiently.,,20,LEC-7
+17,Memory hierarchy,reading,Memory Basics,Easy,"Register (fastest, smallest) -> cache -> RAM -> secondary storage (largest, slowest).",,20,LEC-8
+18,PCB and process creation steps,reading,Processes and Threads,Medium,"OS loads program, allocates stack/heap, sets up I/O, stores metadata in PCB, then starts at main().",,25,LEC-9
+19,Five process states,reading,Processes and Threads,Easy,"New, Ready, Running, Waiting, Terminated — transitions driven by scheduler and I/O.",,20,LEC-10
+20,"Ready, job, and wait queues",question,Processes and Threads,Medium,Which scheduler picks from the job queue vs ready queue? (LTS vs STS),,30,LEC-10
+21,Context switching overhead,reading,Process Management,Medium,"Save old process state in PCB, load new process state — pure overhead, no useful work during switch.",,25,LEC-11
+22,Zombie vs orphan process,question,Process Management,Medium,"Orphan: parent died, adopted by init. Zombie: child exited but PCB entry remains until parent wait().",,30,LEC-11
+23,FCFS and convoy effect,reading,CPU Scheduling,Easy,FCFS serves first-arrived first; convoy effect: short jobs wait behind one long CPU-bound job.,,25,LEC-12
+24,Scheduling metrics,concept,CPU Scheduling,Easy,TAT = completion - arrival; WT = TAT - burst; response = first CPU time - arrival.,,15,LEC-12
+25,SJF preemptive vs non-preemptive,reading,CPU Scheduling,Medium,Non-preemptive SJF can starve long jobs. Preemptive SJF reduces average wait time but needs burst estimates.,,30,LEC-13
+26,Round Robin and time quantum,reading,CPU Scheduling,Easy,RR gives each ready process a time slice; small TQ increases context switches; large TQ approaches FCFS.,,25,LEC-13
+27,Priority scheduling and ageing,question,CPU Scheduling,Medium,How does ageing prevent starvation in priority scheduling?,,30,LEC-13
+28,MLQ vs MLFQ,reading,CPU Scheduling,Hard,MLQ: fixed queues per process type. MLFQ: processes move between queues based on behavior (CPU vs I/O bound).,,30,LEC-14
+29,Benefits of multithreading,reading,Concurrency,Easy,"Responsiveness, resource sharing, economy (cheaper than new processes), multicore utilization.",,20,LEC-15
+30,Critical section and race condition,reading,Concurrency,Medium,Critical section accesses shared data; race condition when outcome depends on interleaving without synchronization.,,25,LEC-16
+31,Mutex limitations,question,Concurrency,Medium,Why can a simple flag variable fail to fix races? (Not atomic; no blocking semantics.),,30,LEC-16
+32,Semaphores vs mutex,reading,Synchronization,Medium,Binary semaphore ~ mutex (one resource). Counting semaphore allows N instances of a resource.,,25,LEC-17
+33,Condition variables,reading,Synchronization,Medium,Wait on a condition with a lock; avoids busy waiting; signaled when event occurs.,,25,LEC-17
+34,Dining philosophers problem,question,Synchronization,Hard,"Why can five philosophers each pick up left fork and deadlock? Name one fix (ordering, limit diners, etc.).",,35,LEC-20
+35,Four deadlock conditions,reading,Deadlock,Medium,"Mutual exclusion, hold and wait, no preemption, circular wait — all must hold for deadlock.",,25,LEC-21
+36,Deadlock prevention vs avoidance,reading,Deadlock,Hard,Prevention: break a necessary condition. Avoidance: banker/safe-state — grant only if system stays safe.,,30,LEC-22
+37,Banker algorithm idea,question,Deadlock,Hard,Explain safe state in one sentence: system can allocate resources so all processes can finish in some order.,,35,LEC-22
+38,Logical vs physical address,reading,Memory Basics,Medium,CPU generates logical (virtual) addresses; MMU maps to physical frames using base/limit or paging.,,25,LEC-24
+39,Internal vs external fragmentation,reading,Memory Allocation,Medium,Internal: wasted space inside allocated partition. External: free holes too small to use without compaction.,,25,LEC-25
+40,First fit vs best fit,question,Memory Allocation,Medium,Which allocation is faster? Which tends to leave smaller leftover holes?,,30,LEC-25
+41,Paging basics,reading,Paging and Segmentation,Medium,Divide logical memory into pages and physical memory into frames; page table maps page to frame; avoids external fragmentation.,,30,LEC-26
+42,TLB purpose,concept,Paging and Segmentation,Medium,Translation look-aside buffer caches recent page mappings to speed address translation.,,15,LEC-26
+43,Segmentation vs paging,reading,Paging and Segmentation,Hard,Segmentation matches user view (code/data/stack segments); paging is fixed-size and OS-oriented; modern systems often combine both.,,30,LEC-27
+44,Demand paging and page fault,reading,Virtual Memory,Medium,Pages brought in only when referenced; invalid page -> trap -> OS loads page into frame -> restart instruction.,,30,LEC-28
+45,LRU vs FIFO page replacement,question,Virtual Memory,Hard,Why can FIFO show Belady anomaly? Why is LRU often better in practice?,,35,LEC-29
+46,Thrashing,reading,Virtual Memory,Hard,Process faults repeatedly without making progress; working set / page-fault frequency controls can reduce thrashing.,,30,LEC-30

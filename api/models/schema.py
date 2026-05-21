@@ -1,7 +1,10 @@
 # models/schemas.py
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Literal
 import json
+
+SubjectFocus = Literal["dsa", "os", "both"]
+
 
 class UserInput(BaseModel):
     goal: str
@@ -9,6 +12,7 @@ class UserInput(BaseModel):
     weekly_hours: Optional[int] = 10
     current_knowledge: Optional[Dict] = None
     weeks: Optional[int] = 1
+    subjects: SubjectFocus = "both"
 
 class UserData(BaseModel):
     deadline: str
