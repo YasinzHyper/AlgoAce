@@ -126,9 +126,13 @@ async def delete_roadmap(roadmap_id: int, user=Depends(get_current_user)):
         import os
         
         # First check if roadmap exists and belongs to user
-        response = supabase.table("roadmaps").select("id").eq("id", roadmap_id).eq("user_id", user.user.id).execute()
+        response = supabase.table("roadmaps").select("id", "user_input").eq("id", roadmap_id).eq("user_id", user.user.id).execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+        roadmap = response.data[0]
+        user_input = roadmap.get("user_input") or {}
+        subjects = user_input.get("subjects", "both")
         
         # Delete associated tasks first (foreign key constraint)
         try:
@@ -142,20 +146,29 @@ async def delete_roadmap(roadmap_id: int, user=Depends(get_current_user)):
         except Exception as e:
             print(f"Warning: Could not delete progress: {e}")
         
-        # Delete metadata file if exists
+        # Delete metadata files if they exist - support both OS and DBMS subjects
         try:
-            metadata_file = os.path.join(
+            metadata_dir = os.path.join(
                 os.path.dirname(__file__), 
                 "..", 
                 "data", 
-                "roadmap_metadata", 
-                f"roadmap_{roadmap_id}_os.json"
+                "roadmap_metadata"
             )
-            if os.path.exists(metadata_file):
-                os.remove(metadata_file)
-                print(f"Deleted metadata file: {metadata_file}")
+            # Try deleting OS metadata
+            if subjects in ["os", "both", "dsa_os", "os_dbms", "all"]:
+                os_metadata_file = os.path.join(metadata_dir, f"roadmap_{roadmap_id}_os.json")
+                if os.path.exists(os_metadata_file):
+                    os.remove(os_metadata_file)
+                    print(f"Deleted OS metadata file: {os_metadata_file}")
+            
+            # Try deleting DBMS metadata
+            if subjects in ["dbms", "both", "dsa_dbms", "os_dbms", "all"]:
+                dbms_metadata_file = os.path.join(metadata_dir, f"roadmap_{roadmap_id}_dbms.json")
+                if os.path.exists(dbms_metadata_file):
+                    os.remove(dbms_metadata_file)
+                    print(f"Deleted DBMS metadata file: {dbms_metadata_file}")
         except Exception as e:
-            print(f"Warning: Could not delete metadata file: {e}")
+            print(f"Warning: Could not delete metadata files: {e}")
         
         # Delete the roadmap
         delete_response = supabase.table("roadmaps").delete().eq("id", roadmap_id).eq("user_id", user.user.id).execute()

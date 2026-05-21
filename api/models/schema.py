@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Literal
 import json
 
-SubjectFocus = Literal["dsa", "os", "both"]
+SubjectFocus = Literal["dsa", "os", "dbms", "dsa_os", "dsa_dbms", "os_dbms", "all"]
 
 
 class UserInput(BaseModel):

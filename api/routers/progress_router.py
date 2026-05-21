@@ -107,7 +107,7 @@ def _record_completion_event(
                     .eq("problem_id", problem_id)
                     .execute()
                 )
-        elif item_type in ("topic", "os_item"):
+        elif item_type in ("topic", "os_item", "dbms_item"):
             table = "topic_completions"
             topic_name = item_id
             if item_type == "os_item":
@@ -115,6 +115,15 @@ def _record_completion_event(
                     from dataset.os_loader import get_os_item_by_id
 
                     meta = get_os_item_by_id(int(item_id))
+                    if meta:
+                        topic_name = meta.get("topic", item_id)
+                except Exception:
+                    topic_name = item_id
+            elif item_type == "dbms_item":
+                try:
+                    from dataset.dbms_loader import get_dbms_item_by_id
+
+                    meta = get_dbms_item_by_id(int(item_id))
                     if meta:
                         topic_name = meta.get("topic", item_id)
                 except Exception:
@@ -190,7 +199,7 @@ async def get_current_user(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
 class CompleteItem(BaseModel):
-    type: str  # "problem", "topic", or "os_item"
+    type: str  # "problem", "topic", "os_item", or "dbms_item"
     id: str
     completed: bool
 
@@ -252,6 +261,8 @@ async def complete_item(task_id: int, item: CompleteItem, user=Depends(get_curre
         completed = progress["completed"]
         if "os_items" not in completed:
             completed["os_items"] = {}
+        if "dbms_items" not in completed:
+            completed["dbms_items"] = {}
 
         if item.type == "problem":
             if str(item.id) in completed.get("problems", {}):
@@ -268,10 +279,15 @@ async def complete_item(task_id: int, item: CompleteItem, user=Depends(get_curre
                 completed["os_items"][str(item.id)] = item.completed
             else:
                 raise HTTPException(status_code=400, detail="OS item ID not found in task")
+        elif item.type == "dbms_item":
+            if str(item.id) in completed["dbms_items"]:
+                completed["dbms_items"][str(item.id)] = item.completed
+            else:
+                raise HTTPException(status_code=400, detail="DBMS item ID not found in task")
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid type. Must be 'problem', 'topic', or 'os_item'",
+                detail="Invalid type. Must be 'problem', 'topic', 'os_item', or 'dbms_item'",
             )
 
         completed_problem_count = sum(1 for v in completed["problems"].values() if v)

@@ -67,6 +67,8 @@ interface Task {
   other_topics: string[]
   os_item_ids?: number[]
   os_items?: OsStudyItem[]
+  dbms_item_ids?: number[]
+  dbms_items?: OsStudyItem[]
 }
 
 interface ProgressEntry {
@@ -76,6 +78,7 @@ interface ProgressEntry {
     problems: Record<string, boolean>
     topics: Record<string, boolean>
     os_items?: Record<string, boolean>
+    dbms_items?: Record<string, boolean>
   }
   completed_problem_count: number
   total_problem_count: number
@@ -102,9 +105,11 @@ export default function ProblemsPage() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
   const [topicFilter, setTopicFilter] = useState<string>('all')
   const [osTopicFilter, setOsTopicFilter] = useState<string>('all')
+  const [dbmsTopicFilter, setDbmsTopicFilter] = useState<string>('all')
   const [progressByTask, setProgressByTask] = useState<Record<number, ProgressEntry>>({})
   const [pendingProblemId, setPendingProblemId] = useState<number | null>(null)
   const [pendingOsItemId, setPendingOsItemId] = useState<number | null>(null)
+  const [pendingDbmsItemId, setPendingDbmsItemId] = useState<number | null>(null)
   const [feedbackByTask, setFeedbackByTask] = useState<Record<number, WeekFeedback>>({})
   const [feedbackLoadingTaskId, setFeedbackLoadingTaskId] = useState<number | null>(null)
   const searchParams = useSearchParams()
@@ -460,9 +465,80 @@ export default function ProblemsPage() {
     }
   }
 
-  const subjectFocus = selectedRoadmap?.user_input?.subjects ?? 'both'
-  const showDsa = subjectFocus === 'dsa' || subjectFocus === 'both'
-  const showOs = subjectFocus === 'os' || subjectFocus === 'both'
+  const handleToggleDbmsComplete = async (
+    taskId: number,
+    itemId: number,
+    checked: boolean
+  ) => {
+    setPendingDbmsItemId(itemId)
+    setProgressByTask((prev) => {
+      const entry = prev[taskId]
+      if (!entry) return prev
+      const dbmsItems = { ...(entry.completed.dbms_items ?? {}), [String(itemId)]: checked }
+      return {
+        ...prev,
+        [taskId]: {
+          ...entry,
+          completed: { ...entry.completed, dbms_items: dbmsItems },
+        },
+      }
+    })
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+
+      const response = await fetch(
+        `http://localhost:8000/api/progress/task/${taskId}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'dbms_item',
+            id: String(itemId),
+            completed: checked,
+          }),
+        }
+      )
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      const { progress } = await response.json()
+      setProgressByTask((prev) => ({ ...prev, [taskId]: progress }))
+      toast.success(checked ? 'DBMS item completed' : 'Marked incomplete')
+    } catch (error) {
+      setProgressByTask((prev) => {
+        const entry = prev[taskId]
+        if (!entry) return prev
+        const dbmsItems = {
+          ...(entry.completed.dbms_items ?? {}),
+          [String(itemId)]: !checked,
+        }
+        return {
+          ...prev,
+          [taskId]: {
+            ...entry,
+            completed: { ...entry.completed, dbms_items: dbmsItems },
+          },
+        }
+      })
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setPendingDbmsItemId(null)
+    }
+  }
+
+  const subjectFocus = selectedRoadmap?.user_input?.subjects ?? 'dsa_os'
+  const showDsa = ['dsa', 'dsa_os', 'dsa_dbms', 'all'].includes(subjectFocus)
+  const showOs = ['os', 'dsa_os', 'os_dbms', 'all'].includes(subjectFocus)
+  const showDbms = ['dbms', 'dsa_dbms', 'os_dbms', 'all'].includes(subjectFocus)
 
   // Update current week's problems when tasks or week changes
   useEffect(() => {
@@ -530,11 +606,16 @@ export default function ProblemsPage() {
   const weekTask = tasks.find(task => task.week === currentWeek)
   const otherTopics = weekTask ? weekTask.other_topics : []
   const osItems = weekTask?.os_items ?? []
+  const dbmsItems = weekTask?.dbms_items ?? []
   const weekProgress = weekTask ? progressByTask[weekTask.id] : undefined
   const osCompletedCount = weekProgress?.completed?.os_items
     ? Object.values(weekProgress.completed.os_items).filter(Boolean).length
     : 0
   const osTotalCount = osItems.length
+  const dbmsCompletedCount = weekProgress?.completed?.dbms_items
+    ? Object.values(weekProgress.completed.dbms_items).filter(Boolean).length
+    : 0
+  const dbmsTotalCount = dbmsItems.length
   const weekCompletedCount = weekProgress?.completed_problem_count ?? 0
   const weekTotalCount = weekProgress?.total_problem_count ?? currentWeekProblems.length
   const weekFeedback = weekTask ? feedbackByTask[weekTask.id] : undefined
@@ -544,6 +625,11 @@ export default function ProblemsPage() {
   const filteredOsItems = osTopicFilter === 'all'
     ? osItems
     : osItems.filter(item => item.topic.toLowerCase() === osTopicFilter.toLowerCase())
+
+  // Filter DBMS items by topic (after dbmsItems is defined)
+  const filteredDbmsItems = dbmsTopicFilter === 'all'
+    ? dbmsItems
+    : dbmsItems.filter(item => item.topic.toLowerCase() === dbmsTopicFilter.toLowerCase())
 
   return (
     <div className="space-y-8">
@@ -732,6 +818,70 @@ export default function ProblemsPage() {
                     </Badge>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {showDbms && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold">Database Management Systems</h3>
+                  {dbmsTotalCount > 0 && (
+                    <Badge variant="outline">
+                      {dbmsCompletedCount}/{dbmsTotalCount} items done
+                    </Badge>
+                  )}
+                </div>
+                <Select value={dbmsTopicFilter} onValueChange={setDbmsTopicFilter}>
+                  <SelectTrigger className="md:w-[200px]">
+                    <SelectValue placeholder="Filter by topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All topics</SelectItem>
+                    <SelectItem value="dbms introduction">DBMS Introduction</SelectItem>
+                    <SelectItem value="sql basics">SQL Basics</SelectItem>
+                    <SelectItem value="database design">Database Design</SelectItem>
+                    <SelectItem value="indexing">Indexing</SelectItem>
+                    <SelectItem value="transactions">Transactions</SelectItem>
+                    <SelectItem value="concurrency control">Concurrency Control</SelectItem>
+                    <SelectItem value="query optimization">Query Optimization</SelectItem>
+                    <SelectItem value="normalization">Normalization</SelectItem>
+                    <SelectItem value="distributed databases">Distributed Databases</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {filteredDbmsItems.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredDbmsItems.map((item) => (
+                    <StudyItemCard
+                      key={item.id}
+                      item={item}
+                      taskId={weekTask?.id}
+                      completed={
+                        weekProgress?.completed?.dbms_items?.[String(item.id)] ?? false
+                      }
+                      pending={pendingDbmsItemId === item.id}
+                      onToggleComplete={
+                        weekTask
+                          ? (checked) =>
+                              handleToggleDbmsComplete(weekTask.id, item.id, checked)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={BookOpen}
+                  title={dbmsItems.length === 0 ? "No DBMS study items this week" : "No items match this topic"}
+                  description={
+                    dbmsItems.length === 0
+                      ? "Regenerate the roadmap or pick a week with DBMS topics in your plan."
+                      : "Try selecting a different topic."
+                  }
+                  className="border-0 bg-transparent p-6"
+                />
               )}
             </div>
           )}

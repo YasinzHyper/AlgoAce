@@ -46,7 +46,7 @@ const knowledgeSchema = z.object({
 const formSchema = z.object({
   goal: z.string().min(1, "Goal is required"),
   deadline: z.date({ required_error: "Deadline is required" }),
-  subjects: z.enum(["dsa", "os", "both"]),
+  subjects: z.enum(["dsa", "os", "dbms", "dsa_os", "dsa_dbms", "os_dbms", "all"]),
   current_knowledge: z.array(knowledgeSchema).min(1, "At least one knowledge area is required"),
   weekly_hours: z.number().min(1, "Weekly hours must be at least 1"),
   weeks: z.number().min(1, "Weeks must be at least 1"),
@@ -61,6 +61,15 @@ const OS_TOPIC_HINTS = [
   "Virtual Memory",
 ]
 
+const DBMS_TOPIC_HINTS = [
+  "DBMS Introduction",
+  "SQL Basics",
+  "Database Design",
+  "Transactions",
+  "Indexing",
+  "Normalization",
+]
+
 export default function CreateRoadmapPage() {
   const [loading, setLoading] = useState(false)
   // const { toast } = useToast()
@@ -71,7 +80,7 @@ export default function CreateRoadmapPage() {
     defaultValues: {
       goal: "",
       deadline: undefined,
-      subjects: "both",
+      subjects: "dsa_os",
       current_knowledge: [{ topic: "", level: "Basic" }],
       weekly_hours: 10,
       weeks: 1,
@@ -237,7 +246,11 @@ export default function CreateRoadmapPage() {
                           Data Structures & Algorithms (LeetCode)
                         </SelectItem>
                         <SelectItem value="os">Operating Systems</SelectItem>
-                        <SelectItem value="both">DSA + Operating Systems</SelectItem>
+                        <SelectItem value="dbms">Database Management Systems</SelectItem>
+                        <SelectItem value="dsa_os">DSA + Operating Systems</SelectItem>
+                        <SelectItem value="dsa_dbms">DSA + DBMS</SelectItem>
+                        <SelectItem value="os_dbms">OS + DBMS</SelectItem>
+                        <SelectItem value="all">DSA + OS + DBMS</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-sm text-muted-foreground">
@@ -245,8 +258,16 @@ export default function CreateRoadmapPage() {
                         "Weekly LeetCode problems only."}
                       {subjects === "os" &&
                         "OS readings and questions from the CodeHelp curriculum."}
-                      {subjects === "both" &&
+                      {subjects === "dbms" &&
+                        "DBMS concept readings and design problems."}
+                      {subjects === "dsa_os" &&
                         "Split time between LeetCode and OS study items each week."}
+                      {subjects === "dsa_dbms" &&
+                        "Combine LeetCode problems with DBMS studies."}
+                      {subjects === "os_dbms" &&
+                        "Balance OS and DBMS topics throughout your roadmap."}
+                      {subjects === "all" &&
+                        "Full-stack preparation: DSA, OS, and DBMS combined for comprehensive coverage."}
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -259,7 +280,15 @@ export default function CreateRoadmapPage() {
                     ? `OS examples: ${OS_TOPIC_HINTS.join(", ")}`
                     : subjects === "dsa"
                       ? "DSA examples: Arrays, Graphs, Dynamic Programming"
-                      : "DSA topics and OS areas (e.g. CPU Scheduling, Virtual Memory)"}
+                      : subjects === "dbms"
+                      ? `DBMS examples: ${DBMS_TOPIC_HINTS.join(", ")}`
+                      : subjects === "dsa_os"
+                      ? "DSA topics and OS areas (e.g., CPU Scheduling, Virtual Memory)"
+                      : subjects === "dsa_dbms"
+                      ? "DSA topics and DBMS concepts (e.g., Normalization, Indexing)"
+                      : subjects === "os_dbms"
+                      ? "OS and DBMS topics combined (e.g., Virtual Memory, Transactions)"
+                      : "DSA, OS and DBMS combined topics"}
                 </p>
                 <div className="space-y-3">
                   {fields.map((f, index) => (
@@ -277,7 +306,11 @@ export default function CreateRoadmapPage() {
                                 placeholder={
                                   subjects === "os"
                                     ? "Topic (e.g., CPU Scheduling)"
-                                    : "Topic (e.g., Graphs)"
+                                    : subjects === "dbms"
+                                    ? "Topic (e.g., Normalization)"
+                                    : subjects === "dsa"
+                                    ? "Topic (e.g., Graphs)"
+                                    : "Topic (e.g., Graphs or Virtual Memory)"
                                 }
                                 {...field}
                               />

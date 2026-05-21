@@ -1,0 +1,31 @@
+id,title,type,topic,difficulty,body,url,estimated_minutes,lecture
+1,What is a Database Management System?,reading,DBMS Introduction,Easy,"A DBMS is software that manages databases and provides mechanisms to store and retrieve data efficiently. It handles data organization and ensures data integrity.",,20,Unit-1
+2,Why do we need a DBMS?,question,DBMS Introduction,Easy,"List three problems without DBMS: data redundancy, data inconsistency, difficulty in data access and security issues.",,25,Unit-1
+3,DBMS vs File System,concept,DBMS Introduction,Easy,"File systems store unstructured data; DBMS provides structured data management with queries and concurrent access.",,15,Unit-1
+4,Advantages of DBMS,reading,DBMS Introduction,Easy,"Data independence, data security, concurrent access, recovery mechanisms, and query optimization.",,25,LEC-2
+5,Data Models in DBMS,reading,Database Models,Easy,"Hierarchical (tree structure) vs Network (graph) vs Relational (tables) vs NoSQL (document/key-value).",,30,LEC-2
+6,Relational Model fundamentals,reading,Database Models,Medium,"Relations as tables; attributes as columns; tuples as rows; keys for uniqueness and relationships.",,25,LEC-3
+7,Entity Relationship Model,reading,Database Models,Easy,"ER diagrams represent entities (objects) and relationships between them; basis for database design.",,25,LEC-3
+8,Introduction to SQL,reading,SQL Basics,Easy,"SQL is declarative language for CRUD operations: CREATE READ UPDATE DELETE on relational databases.",,20,LEC-4
+9,SQL SELECT statement,reading,SQL Basics,Easy,"SELECT retrieves data from tables with WHERE conditions, ORDER BY, GROUP BY, and aggregate functions.",,25,LEC-4
+10,Joins in SQL,reading,SQL Basics,Medium,"INNER JOIN (matching rows), LEFT JOIN (all left + matching), RIGHT JOIN, FULL OUTER JOIN connect multiple tables.",,30,LEC-5
+11,Normalization basics,reading,Database Design,Easy,"Normalization eliminates redundancy through 1NF, 2NF, 3NF; reduces data anomalies and dependency issues.",,25,LEC-6
+12,First Normal Form (1NF),concept,Database Design,Easy,"All attributes contain atomic values; no repeating groups or arrays in single fields.",,20,LEC-6
+13,Second Normal Form (2NF),concept,Database Design,Medium,"Candidate key determines all non-prime attributes; remove partial dependencies between attributes and key.",,25,LEC-7
+14,Third Normal Form (3NF),concept,Database Design,Medium,"Non-prime attributes depend only on candidate key; remove transitive dependencies among non-prime attributes.",,30,LEC-7
+15,ACID properties,reading,Transactions,Easy,"Atomicity (all-or-nothing), Consistency (valid state), Isolation (concurrent transactions), Durability (persistent).",,25,LEC-8
+16,Transactions and ACID,question,Transactions,Medium,"Explain how banks ensure ACID properties during fund transfers between accounts.",,30,LEC-8
+17,Concurrency Control basics,reading,Transactions,Easy,"Multiple users accessing database simultaneously; prevent conflicts like lost updates and dirty reads.",,20,LEC-9
+18,Lock-based protocols,reading,Transactions,Medium,"Shared locks for reads; exclusive locks for writes. Deadlock occurs when processes wait circularly.",,30,LEC-9
+19,Indexing and Performance,reading,Query Optimization,Easy,"Indexes speed up data retrieval like book index; types include primary index, clustered index, and secondary index.",,25,LEC-10
+20,Hash Indexing,reading,Query Optimization,Medium,"Hash function maps key to bucket location; O(1) search but poor for range queries.",,25,LEC-10
+21,B-Tree and B+ Tree Index,reading,Query Optimization,Medium,"Balanced tree structures maintain sorted order. B+ Tree uses leaf pointers for range queries; used in most databases.",,35,LEC-11
+22,Query Optimization,concept,Query Optimization,Hard,"Optimizer estimates cost of query plans and chooses efficient execution path; uses indexes and statistics.",,45,LEC-11
+23,Backup and Recovery,reading,Database Administration,Easy,"Backup copies of database; Recovery restores after failure using logs and checkpoints; WAL (Write-Ahead Logging).",,25,LEC-12
+24,Data Replication,reading,Database Administration,Medium,"Copies database to multiple servers for availability and fault tolerance; master-slave or peer-to-peer replication.",,30,LEC-12
+25,DBMS Architecture layers,reading,DBMS Architecture,Easy,"External (views), Conceptual (logical schema), Internal (physical storage) - three-level architecture.",,20,LEC-13
+26,Storage Management,reading,DBMS Architecture,Medium,"Buffer management, disk I/O optimization, record organization (heap, sequential, indexed-sequential) and access.",,30,LEC-13
+27,NoSQL Databases,reading,Advanced Topics,Medium,"Non-relational databases: document (MongoDB), key-value (Redis), graph (Neo4j), column-family (Cassandra).",,30,LEC-14
+28,MongoDB basics,reading,Advanced Topics,Medium,"Document-oriented database; flexible schema; JSON-like documents; horizontal scalability with sharding.",,30,LEC-14
+29,Distributed Databases,reading,Advanced Topics,Hard,"Data spread across multiple locations; challenges: consistency, eventual consistency, CAP theorem.",,40,LEC-15
+30,CAP Theorem,concept,Advanced Topics,Hard,"Cannot guarantee all three: Consistency, Availability, Partition tolerance. Trade-offs in distributed systems.",,35,LEC-15

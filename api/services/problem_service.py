@@ -13,11 +13,16 @@ def generate_and_save_recommendations(
     user_id: str,
 ):
     try:
-        subjects = user_input.get("subjects", "both")
+        subjects = user_input.get("subjects", "dsa_os")
         print(f"DEBUG: Generating recommendations for subjects={subjects}")
 
+        # Determine which subjects to generate based on the subject value
+        include_dsa = subjects in ("dsa", "dsa_os", "dsa_dbms", "all")
+        include_os = subjects in ("os", "dsa_os", "os_dbms", "all")
+        include_dbms = subjects in ("dbms", "dsa_dbms", "os_dbms", "all")
+
         lc_weeks = []
-        if subjects in ("dsa", "both"):
+        if include_dsa:
             try:
                 lc_tool = ProblemRecommendationTool()
                 lc_weeks = lc_tool._run(
@@ -31,7 +36,7 @@ def generate_and_save_recommendations(
                 lc_weeks = []
 
         os_weeks = []
-        if subjects in ("os", "both"):
+        if include_os:
             try:
                 os_tool = OSRecommendationTool()
                 os_weeks = os_tool._run(
@@ -44,8 +49,23 @@ def generate_and_save_recommendations(
                 print(f"DEBUG: Error in OS tool: {str(e)}")
                 os_weeks = []
 
-        print(f"DEBUG: Before merge - lc_weeks={lc_weeks}, os_weeks={os_weeks}")
-        problems_per_week = merge_week_recommendations(lc_weeks, os_weeks)
+        dbms_weeks = []
+        if include_dbms:
+            try:
+                from tools import DBMSRecommendationTool
+                dbms_tool = DBMSRecommendationTool()
+                dbms_weeks = dbms_tool._run(
+                    roadmap_data=roadmap_data,
+                    company=company,
+                    user_input=user_input,
+                )
+                print(f"DEBUG: DBMS weeks generated: {len(dbms_weeks)} weeks")
+            except Exception as e:
+                print(f"DEBUG: Error in DBMS tool or not available: {str(e)}")
+                dbms_weeks = []
+
+        print(f"DEBUG: Before merge - lc_weeks={len(lc_weeks)}, os_weeks={len(os_weeks)}, dbms_weeks={len(dbms_weeks)}")
+        problems_per_week = merge_week_recommendations(lc_weeks, os_weeks, dbms_weeks)
         print(f"DEBUG: After merge - problems_per_week has {len(problems_per_week)} weeks")
         
         if not problems_per_week:
@@ -57,7 +77,8 @@ def generate_and_save_recommendations(
         supabase.table("tasks").delete().eq("roadmap_id", roadmap_id).execute()
 
         tasks_to_insert = []
-        roadmap_metadata = {}  # Store os_item_ids separately
+        os_metadata = {}  # Store os_item_ids separately
+        dbms_metadata = {}  # Store dbms_item_ids separately
         
         for week_data in problems_per_week:
             task = {
@@ -70,29 +91,49 @@ def generate_and_save_recommendations(
             # Store os_item_ids in metadata (to be saved separately) 
             os_ids = week_data.get("os_item_ids", [])
             if os_ids:
-                roadmap_metadata[week_data["week"]] = os_ids
+                os_metadata[week_data["week"]] = os_ids
                 # Also add os_ids to other_topics temporarily for display
                 # Format: "OS_ITEM_ID:123,OS_ITEM_ID:456"
                 os_item_labels = [f"OS_ITEM_ID:{int(id)}" for id in os_ids]
                 task["other_topics"] = task["other_topics"] + os_item_labels
             
+            # Store dbms_item_ids in metadata (to be saved separately)
+            dbms_ids = week_data.get("dbms_item_ids", [])
+            if dbms_ids:
+                dbms_metadata[week_data["week"]] = dbms_ids
+                # Also add dbms_ids to other_topics temporarily for display
+                # Format: "DBMS_ITEM_ID:123,DBMS_ITEM_ID:456"
+                dbms_item_labels = [f"DBMS_ITEM_ID:{int(id)}" for id in dbms_ids]
+                task["other_topics"] = task["other_topics"] + dbms_item_labels
+            
             tasks_to_insert.append(task)
         
         print(f"DEBUG: Tasks to insert: {tasks_to_insert}")
-        print(f"DEBUG: Roadmap metadata: {roadmap_metadata}")
+        print(f"DEBUG: OS metadata: {os_metadata}")
+        print(f"DEBUG: DBMS metadata: {dbms_metadata}")
 
         insert_response = supabase.table("tasks").insert(tasks_to_insert).execute()
         print(f"DEBUG: Insert response: {insert_response}")
         if not insert_response.data:
             raise HTTPException(status_code=500, detail="Failed to save tasks to database")
 
-        # Save OS item IDs to file system (metadata directory) - always save for debugging
-        metadata_dir = os.path.join(os.path.dirname(__file__), "..", "data", "roadmap_metadata")
-        os.makedirs(metadata_dir, exist_ok=True)
-        metadata_file = os.path.join(metadata_dir, f"roadmap_{roadmap_id}_os.json")
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(roadmap_metadata, f)
-        print(f"DEBUG: Saved OS metadata to {metadata_file}: {roadmap_metadata}")
+        # Save OS item IDs to file system (metadata directory)
+        if os_metadata:
+            metadata_dir = os.path.join(os.path.dirname(__file__), "..", "data", "roadmap_metadata")
+            os.makedirs(metadata_dir, exist_ok=True)
+            os_metadata_file = os.path.join(metadata_dir, f"roadmap_{roadmap_id}_os.json")
+            with open(os_metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(os_metadata, f)
+            print(f"DEBUG: Saved OS metadata to {os_metadata_file}: {os_metadata}")
+        
+        # Save DBMS item IDs to file system (metadata directory)
+        if dbms_metadata:
+            metadata_dir = os.path.join(os.path.dirname(__file__), "..", "data", "roadmap_metadata")
+            os.makedirs(metadata_dir, exist_ok=True)
+            dbms_metadata_file = os.path.join(metadata_dir, f"roadmap_{roadmap_id}_dbms.json")
+            with open(dbms_metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(dbms_metadata, f)
+            print(f"DEBUG: Saved DBMS metadata to {dbms_metadata_file}: {dbms_metadata}")
 
         inserted_tasks = insert_response.data
         progress_entries = []
