@@ -1,136 +1,298 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Flame,
+  Gauge,
+  ListChecks,
+  Loader2,
+  Play,
+  Sparkles,
+  Target,
+  Timer,
+  Trophy,
+  Video,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatCard } from "@/components/layout/stat-card";
+import { Meteors } from "@/components/magicui/meteors";
+import { Marquee } from "@/components/magicui/marquee";
+import { LeaderboardCard } from "@/components/practice/leaderboard-card";
+import { useAnalytics } from "@/hooks/use-analytics";
+import { useChallenges, useChallengeStats } from "@/hooks/use-challenges";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+const practiceModes = [
+  {
+    title: "Mock Interviews",
+    description:
+      "Simulate a real technical interview with live camera and timed prompts.",
+    href: "/practice/mock-interviews",
+    icon: Video,
+    cta: "Start interview",
+    badge: "Recommended",
+  },
+  {
+    title: "Coding Challenges",
+    description:
+      "Timed problem sets generated from your roadmap's weak spots — earn points for the leaderboard.",
+    href: "/practice/challenges",
+    icon: Timer,
+    cta: "Start challenge",
+  },
+];
 
 export default function PracticeOverviewPage() {
+  const router = useRouter();
+  const { data: analytics, loading: analyticsLoading } = useAnalytics();
+  const { recommendation, generating, generate } = useChallenges();
+  const { stats: challengeStats } = useChallengeStats();
+
+  const totals = analytics?.totals;
+  const activeChallenge = challengeStats?.active_challenge ?? null;
+  const topTopics = (analytics?.topic_mastery ?? []).slice(0, 12).map((t) => t.name);
+  const marqueeTopics = topTopics.length >= 4 ? topTopics : [
+    "Arrays", "Hash Map", "Two Pointers", "Sliding Window", "Binary Search",
+    "Dynamic Programming", "Graphs", "Trees", "Heaps", "Backtracking", "Greedy",
+  ];
+
+  const handleStartRecommended = async () => {
+    if (!recommendation) {
+      router.push("/practice/challenges");
+      return;
+    }
+    try {
+      const challenge = await generate({
+        roadmap_id: recommendation.roadmap_id,
+        difficulty: recommendation.difficulty,
+        duration_minutes: recommendation.duration_minutes,
+        problem_count: recommendation.problem_count,
+        focus_topics: recommendation.focus_topics,
+      });
+      router.push(`/practice/challenges/${challenge.id}`);
+    } catch (e) {
+      toast.error("Couldn't start challenge", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Practice Overview</h1>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Mock Interviews</CardTitle>
-            <CardDescription>Simulate real interview scenarios</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/practice/mock-interviews">
-              <Button variant="outline">Start Mock Interview</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Coding Challenges</CardTitle>
-            <CardDescription>Practice with timed coding challenges</CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="space-y-8">
+      <PageHeader
+        title="Practice"
+        description="Sharpen your interview skills with mock sessions and timed challenges."
+        actions={
+          <Button asChild>
             <Link href="/practice/challenges">
-              <Button variant="outline">Start Challenge</Button>
+              Quick start <ArrowRight className="size-4" />
             </Link>
-          </CardContent>
-        </Card>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 stagger-children md:grid-cols-2">
+        {practiceModes.map((mode) => (
+          <Card
+            key={mode.title}
+            className="group glide-border relative overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <Meteors number={10} />
+            <CardHeader className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <mode.icon className="size-5" />
+                </div>
+                {mode.badge && <Badge variant="secondary">{mode.badge}</Badge>}
+              </div>
+              <CardTitle className="mt-4">{mode.title}</CardTitle>
+              <CardDescription>{mode.description}</CardDescription>
+            </CardHeader>
+            <CardFooter className="relative">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href={mode.href}>
+                  {mode.cta} <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
-      <h2 className="text-2xl font-bold mt-8">Practice Statistics</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+
+      {activeChallenge && (
+        <Card className="border-sky-500/30 bg-sky-500/5">
           <CardHeader>
-            <CardTitle>Total Sessions</CardTitle>
-            <CardDescription>Number of practice sessions completed</CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <Timer className="size-5 text-sky-600 dark:text-sky-400" />
+                  Challenge in progress
+                </CardTitle>
+                <CardDescription>
+                  {activeChallenge.title} · {activeChallenge.solved_count}/
+                  {activeChallenge.total_count} solved
+                </CardDescription>
+              </div>
+              <Button asChild>
+                <Link href={`/practice/challenges/${activeChallenge.id}`}>
+                  <Play className="size-4" /> Resume
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">Your stats</h2>
+        {analyticsLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 stagger-children sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Problems Solved"
+              value={totals?.problems_solved ?? 0}
+              icon={CheckCircle2}
+              trend={
+                totals && totals.solved_this_week > 0
+                  ? { value: `+${totals.solved_this_week} this week`, positive: true }
+                  : undefined
+              }
+            />
+            <StatCard
+              title="Current Streak"
+              value={`${totals?.current_streak ?? 0} ${totals?.current_streak === 1 ? "day" : "days"}`}
+              icon={Flame}
+              sparkle={(totals?.current_streak ?? 0) > 0}
+              description={`best ${totals?.longest_streak ?? 0}`}
+            />
+            <StatCard
+              title="Topics Covered"
+              value={analytics?.topic_mastery.length ?? 0}
+              icon={ListChecks}
+              description="distinct tags"
+            />
+            <StatCard
+              title="Challenge Points"
+              value={challengeStats?.total_points ?? 0}
+              icon={Trophy}
+              description={
+                challengeStats
+                  ? `${challengeStats.completed} done · best ${challengeStats.best_score}`
+                  : undefined
+              }
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Trending topics marquee — driven by the user's own topic_mastery */}
+      <Card className="relative overflow-hidden border-dashed py-4">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-card to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-card to-transparent" />
+        <Marquee pauseOnHover className="[--duration:35s]">
+          {marqueeTopics.map((topic) => (
+            <Badge key={topic} variant="secondary" className="px-3 py-1 text-sm">
+              {topic}
+            </Badge>
+          ))}
+        </Marquee>
+        <Marquee reverse pauseOnHover className="[--duration:30s]">
+          {marqueeTopics.map((topic) => (
+            <Badge key={topic} variant="outline" className="px-3 py-1 text-sm">
+              {topic}
+            </Badge>
+          ))}
+        </Marquee>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-primary" />
+              Recommended challenge
+            </CardTitle>
+            <CardDescription>
+              Generated from your roadmap progress and weakest topics.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">15</p>
+            {recommendation ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    <Gauge className="size-3" />
+                    {recommendation.difficulty}
+                  </Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <Timer className="size-3" />
+                    {recommendation.duration_minutes} min
+                  </Badge>
+                  <Badge variant="outline">{recommendation.problem_count} problems</Badge>
+                </div>
+                {recommendation.focus_topics.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Focus topics
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recommendation.focus_topics.map((t) => (
+                        <Badge key={t} variant="secondary">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">{recommendation.reason}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Create a roadmap to get a tailored challenge — or head to the
+                Challenges page to start a custom one.
+              </p>
+            )}
           </CardContent>
+          <CardFooter className="gap-2 border-t">
+            <Button onClick={handleStartRecommended} disabled={generating}>
+              {generating ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Starting...
+                </>
+              ) : (
+                <>
+                  <Target className="size-4" />
+                  {recommendation ? "Start this challenge" : "Open challenges"}
+                </>
+              )}
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/practice/challenges">Customize</Link>
+            </Button>
+          </CardFooter>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Average Duration</CardTitle>
-            <CardDescription>Average time spent per session</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">45 min</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Success Rate</CardTitle>
-            <CardDescription>Percentage of challenges completed successfully</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">80%</p>
-          </CardContent>
-        </Card>
+
+        <LeaderboardCard defaultPeriod="week" limit={5} />
       </div>
-      <h2 className="text-2xl font-bold mt-8">Recent Activity</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Last Session</CardTitle>
-          <CardDescription>Details of your last practice session</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-lg">Mock Interview: System Design</p>
-          <p className="text-sm text-gray-500">Completed on: 2023-10-01</p>
-        </CardContent>
-      </Card>
-      <h2 className="text-2xl font-bold mt-8">Recommended Challenges</h2>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Challenge 1</CardTitle>
-            <CardDescription>Recommended based on your skill level</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/practice/challenges/1">
-              <Button variant="outline">Start Challenge</Button>
-            </Link>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Challenge 2</CardTitle>
-            <CardDescription>Recommended based on your skill level</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/practice/challenges/2">
-              <Button variant="outline">Start Challenge</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-      <h2 className="text-2xl font-bold mt-8">Practice Goals</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Set Your Goals</CardTitle>
-          <CardDescription>Define your practice goals for the week</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline">Set Goals</Button>
-        </CardContent>
-      </Card>
-      <h2 className="text-2xl font-bold mt-8">Leaderboard</h2>
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Performers</CardTitle>
-          <CardDescription>See who's leading the practice sessions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>User 1</span>
-              <span>Score: 95</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 2</span>
-              <span>Score: 90</span>
-            </li>
-            <li className="flex justify-between">
-              <span>User 3</span>
-              <span>Score: 85</span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
-} 
+}

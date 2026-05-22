@@ -79,7 +79,7 @@ class RoadmapTool(BaseTool):
         """
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash-001",
+                model="gemini-2.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction="You are a helpful assistant that generates well thought out personalized learning roadmaps in valid JSON format.",

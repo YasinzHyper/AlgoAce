@@ -6,14 +6,80 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Trophy, Target, Clock, BookOpen, Code2 } from "lucide-react";
-import { ActivityCalendar } from "react-activity-calendar"; // Importing the calendar component
-import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Trophy, Target, BookOpen, Code2, Camera, Image as ImageIcon, Trash2, Flame } from "lucide-react";
+import { ActivityCalendar } from "react-activity-calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTheme } from "next-themes";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/utils/supabase/utils";
 import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/layout/stat-card";
+import { PageHeader } from "@/components/layout/page-header";
+import { useAnalytics } from "@/hooks/use-analytics";
+import { formatDistanceToNow } from "date-fns";
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const { data: analytics, loading: analyticsLoading } = useAnalytics();
+
+  const activityData = useMemo(
+    () => analytics?.daily_activity ?? [],
+    [analytics]
+  );
+  const totalContributions = useMemo(
+    () => activityData.reduce((sum, d) => sum + d.count, 0),
+    [activityData]
+  );
+
+  const totals = analytics?.totals;
+  const difficultyMap = useMemo(() => {
+    const m: Record<string, number> = { Easy: 0, Medium: 0, Hard: 0 };
+    for (const d of analytics?.difficulty_distribution ?? []) m[d.name] = d.value;
+    return m;
+  }, [analytics]);
+  const totalSolved = totals?.problems_solved ?? 0;
+  const DIFFICULTY_STYLES: Record<
+    "Easy" | "Medium" | "Hard",
+    { dot: string; bar: string }
+  > = {
+    Easy: { dot: "bg-emerald-500", bar: "[&_[data-slot=progress-indicator]]:bg-emerald-500" },
+    Medium: { dot: "bg-amber-500", bar: "[&_[data-slot=progress-indicator]]:bg-amber-500" },
+    Hard: { dot: "bg-rose-500", bar: "[&_[data-slot=progress-indicator]]:bg-rose-500" },
+  };
+
+  // Stretch the contribution calendar to the full card width by deriving
+  // blockSize from the measured container. react-activity-calendar renders a
+  // fixed-width SVG, so without this it only fills ~60% on wide screens.
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [calendarBlockSize, setCalendarBlockSize] = useState(11);
+  useLayoutEffect(() => {
+    const el = calendarRef.current;
+    if (!el) return;
+    const WEEKS = 53;
+    const MARGIN = 3;
+    const LABEL_GUTTER = 32; // weekday labels + legend padding
+    const compute = () => {
+      const w = el.clientWidth;
+      if (w <= 0) return;
+      const size = Math.floor((w - LABEL_GUTTER - (WEEKS - 1) * MARGIN) / WEEKS);
+      setCalendarBlockSize(Math.max(9, Math.min(18, size)));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [analyticsLoading]);
+  const topTopics = (analytics?.topic_mastery ?? []).slice(0, 6);
+  const maxTopicValue = topTopics.reduce((max, t) => Math.max(max, t.value), 0) || 1;
+  const recentActivity = analytics?.recent_activity ?? [];
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
@@ -114,13 +180,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-40" />
         <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <Skeleton className="h-20 w-20 rounded-full" />
               <div className="space-y-2">
@@ -130,25 +193,18 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Not Signed In</CardTitle>
@@ -159,41 +215,59 @@ export default function ProfilePage() {
     );
   }
 
+  const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Profile Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Your personal information</CardDescription>
-        </CardHeader>
+    <div className="space-y-8">
+      <PageHeader
+        title="Profile"
+        description="Your account, progress, and achievements in one place."
+      />
+
+      {/* Profile Header Card */}
+      <Card className="animate-fade-in-up">
         <CardContent>
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20" onClick={() => {
-              const currentPhoto = pendingPhoto || photoPreview || user.user_metadata?.avatar_url;
-              if (currentPhoto) {
-                setPendingPhoto(currentPhoto);
-                setIsPreviewOnly(true);
-                setShowPhotoModal(true);
-              }
-            }} style={{ cursor: (pendingPhoto || photoPreview || user.user_metadata?.avatar_url) ? 'pointer' : 'default' }}>
-              <AvatarImage src={pendingPhoto || photoPreview || user.user_metadata?.avatar_url} alt={user.email} />
-              <AvatarFallback>{user.email?.[0]?.toUpperCase()}</AvatarFallback>
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <Avatar
+              className="size-20 cursor-pointer ring-2 ring-border ring-offset-2 ring-offset-background transition-all hover:ring-primary/60"
+              onClick={() => {
+                if (currentPhoto) {
+                  setPendingPhoto(currentPhoto);
+                  setIsPreviewOnly(true);
+                  setShowPhotoModal(true);
+                }
+              }}
+            >
+              <AvatarImage src={currentPhoto} alt={user.email} />
+              <AvatarFallback className="text-xl">{user.email?.[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="text-lg font-semibold">{user.email}</h3>
-              <p className="text-sm text-muted-foreground">Member since {new Date(user.created_at).toLocaleDateString()}</p>
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" variant="outline" onClick={handleTakePhoto}>Take Photo</Button>
-                <Button size="sm" variant="outline" onClick={handleUploadClick}>Upload from Gallery</Button>
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="space-y-0.5">
+                <h3 className="truncate text-lg font-semibold leading-tight">{user.email}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Member since {new Date(user.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={handleTakePhoto}>
+                  <Camera className="size-4" />
+                  Take photo
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleUploadClick}>
+                  <ImageIcon className="size-4" />
+                  Upload
+                </Button>
                 {(photoPreview || pendingPhoto) && (
-                  <Button size="sm" variant="destructive" onClick={handleDiscardExistingPhoto}>Discard Photo</Button>
+                  <Button size="sm" variant="ghost" onClick={handleDiscardExistingPhoto} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 className="size-4" />
+                    Remove
+                  </Button>
                 )}
                 <input
                   type="file"
                   accept="image/*"
                   ref={fileInputRef}
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={handleFileChange}
                 />
               </div>
@@ -201,95 +275,122 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
-      {/* Webcam Modal & Save/Discard */}
-      {showPhotoModal && (
-        <div className={isPreviewOnly ? "fixed inset-0 z-50 flex items-center justify-center bg-black/60" : "fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/10"}>
-          {isPreviewOnly ? (
+
+      {/* Photo capture / upload dialog */}
+      <Dialog
+        open={showPhotoModal && !isPreviewOnly}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (videoRef.current && videoRef.current.srcObject) {
+              (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+            }
+            setShowPhotoModal(false);
+            setPendingPhoto(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pendingPhoto ? "Confirm photo" : "Take a photo"}</DialogTitle>
+          </DialogHeader>
+          {!pendingPhoto ? (
             <>
-              <button
-                onClick={() => {
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                className="aspect-video w-full rounded-lg border bg-muted object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  if (videoRef.current && videoRef.current.srcObject) {
+                    (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+                  }
                   setShowPhotoModal(false);
-                  setIsPreviewOnly(false);
-                  setPendingPhoto(null);
-                }}
-                className="absolute top-6 right-8 text-white hover:text-gray-300 text-4xl font-bold focus:outline-none z-50"
-                aria-label="Close preview"
-              >
-                ×
-              </button>
-              <img src={pendingPhoto ?? undefined} alt="Preview" className="max-w-[90vw] max-h-[90vh] rounded-lg object-contain shadow-xl z-40" />
+                }}>Cancel</Button>
+                <Button onClick={handleCapture}>
+                  <Camera className="size-4" />
+                  Capture
+                </Button>
+              </DialogFooter>
             </>
           ) : (
-            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full flex flex-col items-center relative">
-              {!pendingPhoto ? (
-                <>
-                  <video ref={videoRef} autoPlay className="w-64 h-48 rounded mb-4 bg-black" />
-                  <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  <Button onClick={handleCapture} className="mb-2 w-full">Capture</Button>
-                  <Button variant="outline" onClick={() => {
-                    setShowPhotoModal(false);
-                    if (videoRef.current && videoRef.current.srcObject) {
-                      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-                    }
-                  }} className="w-full">Cancel</Button>
-                </>
-              ) : (
-                <>
-                  <img src={pendingPhoto} alt="Preview" className="w-64 h-48 rounded mb-4 object-cover" />
-                  <div className="flex gap-2 w-full">
-                    <Button onClick={handleSavePhoto} className="w-1/2 bg-green-600 hover:bg-green-700 text-white" variant="default">Save</Button>
-                    <Button onClick={handleDiscardPhoto} className="w-1/2 bg-red-600 hover:bg-red-700 text-white" variant="destructive">Discard</Button>
-                  </div>
-                </>
-              )}
-            </div>
+            <>
+              <img
+                src={pendingPhoto}
+                alt="Preview"
+                className="aspect-video w-full rounded-lg border object-cover"
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={handleDiscardPhoto}>Discard</Button>
+                <Button onClick={handleSavePhoto}>Save photo</Button>
+              </DialogFooter>
+            </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview-only dialog */}
+      <Dialog
+        open={showPhotoModal && isPreviewOnly}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowPhotoModal(false);
+            setIsPreviewOnly(false);
+            setPendingPhoto(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Profile photo</DialogTitle>
+          </DialogHeader>
+          <img
+            src={pendingPhoto ?? undefined}
+            alt="Profile"
+            className="max-h-[70vh] w-full rounded-lg object-contain"
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Stats Overview */}
+      {analyticsLoading || !totals ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            title="Problems Solved"
+            value={totals.problems_solved}
+            icon={Trophy}
+            sparkle={totals.problems_solved > 0}
+            trend={
+              totals.solved_this_week > 0
+                ? { value: `+${totals.solved_this_week} this week`, positive: true }
+                : undefined
+            }
+          />
+          <StatCard
+            title="Current Streak"
+            value={`${totals.current_streak} ${totals.current_streak === 1 ? "day" : "days"}`}
+            icon={Flame}
+            sparkle={totals.current_streak > 0}
+            description={
+              totals.last_activity_date ? `last active ${totals.last_activity_date}` : "no activity yet"
+            }
+          />
+          <StatCard
+            title="Longest Streak"
+            value={`${totals.longest_streak} ${totals.longest_streak === 1 ? "day" : "days"}`}
+            icon={Target}
+            description="personal best"
+          />
         </div>
       )}
-      {/* Stats Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Progress</CardTitle>
-          <CardDescription>Track your learning journey</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  <div>
-                    <p className="text-sm font-medium">Problems Solved</p>
-                    <p className="text-2xl font-bold">24</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-blue-500" />
-                  <div>
-                    <p className="text-sm font-medium">Current Streak</p>
-                    <p className="text-2xl font-bold">5 days</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="text-sm font-medium">Total Time</p>
-                    <p className="text-2xl font-bold">12h 30m</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Detailed Progress */}
       <Card>
@@ -304,65 +405,58 @@ export default function ProfilePage() {
               <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
             </TabsList>
             <TabsContent value="topics" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Arrays & Strings</span>
-                    <span className="text-sm text-muted-foreground">75%</span>
-                  </div>
-                  <Progress value={75} className="h-2" />
+              {analyticsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-6 w-full" />
+                  ))}
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Linked Lists</span>
-                    <span className="text-sm text-muted-foreground">45%</span>
-                  </div>
-                  <Progress value={45} className="h-2" />
+              ) : topTopics.length > 0 ? (
+                <div className="space-y-4">
+                  {topTopics.map((t) => (
+                    <div key={t.name}>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">{t.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {t.value} solved
+                        </span>
+                      </div>
+                      <Progress value={(t.value / maxTopicValue) * 100} className="h-2" />
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Trees & Graphs</span>
-                    <span className="text-sm text-muted-foreground">30%</span>
-                  </div>
-                  <Progress value={30} className="h-2" />
-                </div>
-              </div>
+              ) : (
+                <p className="py-4 text-sm text-muted-foreground">
+                  No topic data yet. Complete some problems to see your strongest areas.
+                </p>
+              )}
             </TabsContent>
             <TabsContent value="difficulty" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Easy</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">15</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {(["Easy", "Medium", "Hard"] as const).map((level) => {
+                  const count = difficultyMap[level] ?? 0;
+                  const share = totalSolved > 0 ? Math.round((count / totalSolved) * 100) : 0;
+                  const styles = DIFFICULTY_STYLES[level];
+                  return (
+                    <Card key={level} className="gap-0 p-5">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <span className={cn("size-2 rounded-full", styles.dot)} />
+                          {level}
+                        </span>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {share}%
+                        </span>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Medium</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">7</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Hard</Badge>
-                      <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-2xl font-bold">2</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <p className="mt-2 text-3xl font-bold tabular-nums">{count}</p>
+                      <p className="text-xs text-muted-foreground">solved</p>
+                      <Progress
+                        value={share}
+                        className={cn("mt-3 h-1.5 bg-muted", styles.bar)}
+                      />
+                    </Card>
+                  );
+                })}
               </div>
             </TabsContent>
           </Tabs>
@@ -376,156 +470,100 @@ export default function ProfilePage() {
           <CardDescription>Your latest learning milestones</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-blue-100 rounded-full">
-                <Code2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium">Solved "Two Sum" Problem</p>
-                <p className="text-sm text-muted-foreground">2 hours ago</p>
-              </div>
+          {analyticsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-green-100 rounded-full">
-                <BookOpen className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Completed Linked Lists Module</p>
-                <p className="text-sm text-muted-foreground">1 day ago</p>
-              </div>
+          ) : recentActivity.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivity.slice(0, 5).map((item, idx) => {
+                const isProblem = item.type === "problem";
+                return (
+                  <div
+                    key={`${item.type}-${item.problem_id ?? item.title}-${idx}`}
+                    className="flex items-center gap-4"
+                  >
+                    <div
+                      className={`p-2 rounded-full ${
+                        isProblem ? "bg-blue-100 dark:bg-blue-500/20" : "bg-green-100 dark:bg-green-500/20"
+                      }`}
+                    >
+                      {isProblem ? (
+                        <Code2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {isProblem ? `Solved "${item.title}"` : `Completed ${item.title} topic`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.completed_at), { addSuffix: true })}
+                        {item.difficulty ? ` · ${item.difficulty}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-purple-100 rounded-full">
-                <Trophy className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-medium">Achieved 5-day Streak</p>
-                <p className="text-sm text-muted-foreground">2 days ago</p>
-              </div>
-            </div>
+          ) : (
+            <p className="py-2 text-sm text-muted-foreground">
+              No activity yet — mark a problem as completed to get started.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contribution Graph (GitHub-style) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{totalContributions} contributions in the last year</CardTitle>
+          <CardDescription>Problems and topics completed per day</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div ref={calendarRef} className="w-full overflow-x-auto">
+            {analyticsLoading || activityData.length === 0 ? (
+              <Skeleton className="h-[160px] w-full" />
+            ) : (
+              <ActivityCalendar
+                data={activityData}
+                blockSize={calendarBlockSize}
+                blockMargin={3}
+                blockRadius={2}
+                fontSize={11}
+                maxLevel={4}
+                colorScheme={resolvedTheme === "dark" ? "dark" : "light"}
+                theme={{
+                  light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+                  dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+                }}
+                labels={{
+                  legend: { less: "Less", more: "More" },
+                  totalCount: "{{count}} contributions in the last year",
+                }}
+                style={{ width: "100%" }}
+                showWeekdayLabels
+                hideTotalCount
+                renderBlock={(block, activity) => (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{block}</TooltipTrigger>
+                    <TooltipContent>
+                      {activity.count === 0 ? "No" : activity.count}{" "}
+                      {activity.count === 1 ? "contribution" : "contributions"} on{" "}
+                      {new Date(activity.date).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              />
+            )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Calendar Heatmap */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Over Time</CardTitle>
-          <CardDescription>Your daily activity</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ActivityCalendar
-            data={[
-              { date: '2025-06-01', count: 1, level: 1 },
-              { date: '2025-06-02', count: 2, level: 2 },
-                            { date: '2025-06-03', count: 3, level: 3 },
-              { date: '2025-06-04', count: 0, level: 0 },
-              { date: '2025-06-05', count: 1, level: 1 },
-              // Add more activity data as needed
-            ]}
-            labels={{
-              legend: {
-                less: 'Less',
-                more: 'More',
-              },
-              months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-              weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-            }}
-            theme={{
-              light: ['#ebedf0', '#c6e48b', '#7bc96f', '#239a3b', '#196127'],
-            }}
-            showWeekdayLabels
-          />
-        </CardContent>
-      </Card>
-
-      {/* Weekly Goals */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Weekly Goals</CardTitle>
-          <CardDescription>Stay focused and hit your targets</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Problems to Solve</span>
-                <span className="text-sm text-muted-foreground">3 / 5</span>
-              </div>
-              <Progress value={(3 / 5) * 100} />
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Hours to Study</span>
-                <span className="text-sm text-muted-foreground">6 / 10</span>
-              </div>
-              <Progress value={(6 / 10) * 100} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Achievements */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Achievements</CardTitle>
-          <CardDescription>Milestones you’ve unlocked</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              <span>10 Problems Solved</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-blue-500" />
-              <span>5-Day Streak</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-green-500" />
-              <span>10 Hours Logged</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* XP / Level System */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Experience</CardTitle>
-          <CardDescription>Gamify your growth</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p>Level 2</p>
-            <Progress value={40} />
-            <p className="text-sm text-muted-foreground">40 XP / 100 XP to next level</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Leaderboard */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Leaderboard</CardTitle>
-          <CardDescription>See where you rank</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            <li className="flex justify-between">
-              <span>🥇 Alice</span>
-              <span>120 XP</span>
-            </li>
-            <li className="flex justify-between">
-              <span>🥈 Bob</span>
-              <span>100 XP</span>
-            </li>
-            <li className="flex justify-between font-semibold">
-              <span>🥉 You</span>
-              <span>90 XP</span>
-            </li>
-          </ul>
         </CardContent>
       </Card>
     </div>

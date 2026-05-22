@@ -1,21 +1,113 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-// import { Toaster } from '@/components/ui/sonner'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/utils/supabase/utils'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Toaster, toast } from 'sonner'
 import Link from 'next/link'
+import {
+  ArrowRight,
+  ArrowUpDown,
+  Briefcase,
+  Building2,
+  CalendarClock,
+  CalendarRange,
+  Map,
+  Plus,
+  Trash2,
+} from 'lucide-react'
+import { PageHeader } from '@/components/layout/page-header'
+import { EmptyState } from '@/components/layout/empty-state'
 
+type SortOrder = 'newest' | 'oldest' | 'deadline'
+
+type PaceStatus = 'ahead' | 'on_track' | 'behind' | 'no_data'
+
+interface RoadmapOverview {
+  roadmap_id: number
+  overall: { completed: number; total: number; percentage: number }
+  pace: { status: PaceStatus; delta: number; days_remaining: number | null }
+  total_weeks: number
+  weak_topics: string[]
+}
+
+const PACE_BADGE: Record<PaceStatus, { label: string; className: string }> = {
+  ahead: {
+    label: 'Ahead',
+    className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  },
+  on_track: {
+    label: 'On track',
+    className: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  },
+  behind: {
+    label: 'Behind',
+    className: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  },
+  no_data: {
+    label: 'Not started',
+    className: 'border-muted bg-muted/40 text-muted-foreground',
+  },
+}
 
 const RoadmapDashboard = () => {
   const [roadmaps, setRoadmaps] = useState<any[]>([])
+  const [overview, setOverview] = useState<Record<number, RoadmapOverview>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
   const router = useRouter()
+
+  const sortedRoadmaps = useMemo(() => {
+    const list = [...roadmaps]
+    const ts = (v: string | undefined) => (v ? new Date(v).getTime() : 0)
+    switch (sortOrder) {
+      case 'oldest':
+        return list.sort((a, b) => ts(a.created_at) - ts(b.created_at))
+      case 'deadline':
+        return list.sort((a, b) => {
+          const ad = a.user_input?.deadline
+          const bd = b.user_input?.deadline
+          if (!ad && !bd) return ts(b.created_at) - ts(a.created_at)
+          if (!ad) return 1
+          if (!bd) return -1
+          return ts(ad) - ts(bd)
+        })
+      case 'newest':
+      default:
+        return list.sort((a, b) => ts(b.created_at) - ts(a.created_at))
+    }
+  }, [roadmaps, sortOrder])
 
   useEffect(() => {
     const fetchRoadmaps = async () => {
@@ -36,6 +128,20 @@ const RoadmapDashboard = () => {
         const data = await response.json()
         console.log('API Response:', data)
         setRoadmaps(data.roadmaps)
+
+        // Fetch per-roadmap completion in one shot so each card can render a
+        // progress bar inline. Non-blocking: failure here doesn't hide cards.
+        try {
+          const ovRes = await fetch('http://localhost:8000/api/analytics/roadmaps', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (ovRes.ok) {
+            const ovJson = await ovRes.json()
+            setOverview(ovJson.roadmaps ?? {})
+          }
+        } catch (e) {
+          console.warn('Roadmap overview fetch failed', e)
+        }
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -72,31 +178,89 @@ const RoadmapDashboard = () => {
     }
   }
 
-  // Remove sort/filter logic, just show all roadmaps
-  let displayedRoadmaps = roadmaps;
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Roadmaps" description="Loading your personalized plans..." />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-52 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-  if (loading) return <div className="flex items-center justify-center h-96 text-lg text-muted-foreground">Loading your roadmaps...</div>
-  if (error) return <div className="flex items-center justify-center h-96 text-lg text-red-500">Error: {error}</div>
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Roadmaps" />
+        <EmptyState
+          icon={Map}
+          title="Couldn't load your roadmaps"
+          description={error}
+          action={
+            <Button onClick={() => router.refresh()} variant="outline">
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6">
+    <div className="space-y-8">
       <Toaster />
-      <h1 className="text-3xl font-bold mb-6 text-primary">Your Roadmaps</h1>
-      <Button asChild className="flex items-center gap-2 px-5 py-2 text-base font-semibold bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg hover:from-blue-600 hover:to-indigo-600 mb-6">
-        <Link href="/roadmap/create">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Create New Roadmap
-        </Link>
-      </Button>
-      {displayedRoadmaps.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a4 4 0 00-4-4H7a4 4 0 00-4 4v10a4 4 0 004 4h10a4 4 0 004-4v-4a4 4 0 00-4-4h-4" /></svg>
-          <span className="text-lg">No roadmaps found. Start by creating a new roadmap!</span>
-        </div>
+      <PageHeader
+        title="Roadmaps"
+        description="Personalized study plans tailored to your goal and timeline."
+        actions={
+          <>
+            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+              <SelectTrigger className="w-[160px]" aria-label="Sort roadmaps">
+                <ArrowUpDown className="size-4 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="deadline">Deadline soonest</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button asChild>
+              <Link href="/roadmap/create">
+                <Plus className="size-4" />
+                New roadmap
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      {roadmaps.length === 0 ? (
+        <EmptyState
+          icon={Map}
+          title="No roadmaps yet"
+          description="Create your first roadmap to get a week-by-week plan for your target role."
+          action={
+            <Button asChild>
+              <Link href="/roadmap/create">
+                <Plus className="size-4" />
+                Create roadmap
+              </Link>
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          {displayedRoadmaps.map(roadmap => (
-            <RoadmapCard key={roadmap.id} roadmap={roadmap} onDelete={handleDelete} />
+        <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-3">
+          {sortedRoadmaps.map((roadmap) => (
+            <RoadmapCard
+              key={roadmap.id}
+              roadmap={roadmap}
+              overview={overview[roadmap.id]}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}
@@ -104,53 +268,112 @@ const RoadmapDashboard = () => {
   )
 }
 
-const RoadmapCard = ({ roadmap, onDelete }: { roadmap: any, onDelete: (id: number) => void }) => {
-  const { goal, weeks, company, deadline, role } = roadmap.user_input;
-  const deadlineDate = deadline ? new Date(deadline).toLocaleDateString() : 'N/A';
+const RoadmapCard = ({
+  roadmap,
+  overview,
+  onDelete,
+}: {
+  roadmap: any
+  overview?: RoadmapOverview
+  onDelete: (id: number) => void
+}) => {
+  const { goal, weeks, company, deadline, role } = roadmap.user_input
+  const deadlineDate = deadline ? new Date(deadline).toLocaleDateString() : null
+  const pace = overview ? PACE_BADGE[overview.pace.status] ?? PACE_BADGE.no_data : null
+
   return (
-    <Card className="transition-shadow duration-200 hover:shadow-2xl hover:border-primary border border-gray-200 bg-blue/90">
-      <CardHeader>
-        <CardTitle className="flex flex-col gap-1 text-xl font-semibold">
-          <span className="break-words max-w-full">{goal}</span>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {company && <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium w-fit">{company}</span>}
-            {role && <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-medium w-fit">{role}</span>}
-          </div>
-        </CardTitle>
+    <Card className="group flex flex-col transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+      <CardHeader className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="line-clamp-2 text-lg leading-snug">{goal}</CardTitle>
+          {pace && (
+            <Badge variant="outline" className={cn('shrink-0', pace.className)}>
+              {pace.label}
+            </Badge>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {company && (
+            <Badge variant="secondary" className="gap-1">
+              <Building2 className="size-3" />
+              {company}
+            </Badge>
+          )}
+          {role && (
+            <Badge variant="secondary" className="gap-1">
+              <Briefcase className="size-3" />
+              {role}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
-          <span className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium">{weeks} weeks</span>
-          <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium">Deadline: {deadlineDate}</span>
+      <CardContent className="flex-1 space-y-4">
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarRange className="size-4" />
+            {weeks} weeks
+          </span>
+          {deadlineDate && (
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarClock className="size-4" />
+              Due {deadlineDate}
+            </span>
+          )}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 items-center">
-          <Link href={`/roadmap/${roadmap.id}`} className="w-full">
-            <Button variant="default" className="w-full cursor-pointer bg-green-500 hover:bg-green-600 text-white">View</Button>
-          </Link>
-          <Link href={`/problems?roadmap=${roadmap.id}`} className="w-full">
-            <Button variant="secondary" className="w-full cursor-pointer">Problems</Button>
-          </Link>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full cursor-pointer col-span-2">Delete</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the roadmap.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onDelete(roadmap.id)}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        {overview && (
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-semibold">{overview.overall.percentage}%</span>
+              <span className="text-muted-foreground">
+                {overview.overall.completed}/{overview.overall.total} problems
+              </span>
+            </div>
+            <Progress value={overview.overall.percentage} className="h-1.5" />
+          </div>
+        )}
       </CardContent>
+      <CardFooter className="gap-2 border-t pt-4">
+        <Button asChild className="flex-1">
+          <Link href={`/roadmap/${roadmap.id}`}>
+            View <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="flex-1">
+          <Link href={`/problems?roadmap=${roadmap.id}`}>Problems</Link>
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-destructive"
+              aria-label="Delete roadmap"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this roadmap?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. All tasks and progress associated
+                with this roadmap will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(roadmap.id)}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardFooter>
     </Card>
-  );
+  )
 }
 
 export default RoadmapDashboard

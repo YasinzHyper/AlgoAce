@@ -36,14 +36,16 @@ function PieChart({ acceptanceRate, size = 96 }: { acceptanceRate: number, size?
 
 import { useState, useEffect } from 'react'
 import { use } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { supabase } from '@/utils/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster, toast } from 'sonner'
 import { HelpModal } from "@/components/problems/help-modal"
-import { useRef, useEffect as useEffectReact } from 'react';
 
 interface RawProblemData {
   id: number
@@ -87,12 +89,70 @@ interface PageProps {
 
 export default function ProblemDetailPage({ params }: PageProps) {
   const resolvedParams = use(params)
+  const searchParams = useSearchParams()
+  const taskIdParam = searchParams.get('task')
+  const taskId = taskIdParam && /^\d+$/.test(taskIdParam) ? parseInt(taskIdParam) : null
+
   const [problem, setProblem] = useState<ProblemDetail | null>(null)
   const [isCompleted, setIsCompleted] = useState(false)
+  const [completionPending, setCompletionPending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('description')
   const [explanation, setExplanation] = useState<Explanation | null>(null)
   const [explanationLoading, setExplanationLoading] = useState(false)
+
+  // Load persisted completion state for this problem within its task context.
+  useEffect(() => {
+    if (!taskId) return
+    const loadProgress = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) return
+        const token = sessionData.session.access_token
+        const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const progress = await res.json()
+        const problems: Record<string, boolean> = progress?.completed?.problems ?? {}
+        setIsCompleted(Boolean(problems[resolvedParams.id]))
+      } catch {
+        // Non-fatal: leave checkbox in its default state.
+      }
+    }
+    loadProgress()
+  }, [taskId, resolvedParams.id])
+
+  const handleToggleComplete = async (checked: boolean) => {
+    setIsCompleted(checked)
+    if (!taskId) return // No task context: behave as before (local-only).
+
+    setCompletionPending(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+      const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}/complete`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type: 'problem', id: resolvedParams.id, completed: checked }),
+      })
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      toast.success(checked ? 'Marked as completed' : 'Marked as incomplete')
+    } catch (error) {
+      setIsCompleted(!checked)
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setCompletionPending(false)
+    }
+  }
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -173,229 +233,216 @@ export default function ProblemDetailPage({ params }: PageProps) {
     }
   }
 
-  // Helper to extract examples and constraints from description if missing
-  function extractExamplesAndConstraints(description: string) {
-    // Extract Examples
-    const exampleRegex = /Example\s*\d*:(?:[\s\S]*?Input:.*?Output:.*?(?:Explanation:.*?)?)+/g;
-    const singleExampleRegex = /Example\s*\d*:[\s\S]*?(?=Example|Constraints:|$)/g;
-    const inputRegex = /Input:([^\n]*)/;
-    const outputRegex = /Output:([^\n]*)/;
-    const explanationRegex = /Explanation:([^\n]*)/;
-    let examples: { input: string; output: string; explanation?: string }[] = [];
-    let constraints: string[] = [];
-    // Find all example blocks
-    const exampleBlocks = description.match(singleExampleRegex);
-    if (exampleBlocks) {
-      examples = exampleBlocks.map(block => {
-        const input = block.match(inputRegex)?.[1]?.trim() || '';
-        const output = block.match(outputRegex)?.[1]?.trim() || '';
-        const explanation = block.match(explanationRegex)?.[1]?.trim();
-        return { input, output, explanation };
-      });
-    }
-    // Extract Constraints
-    const constraintsMatch = description.match(/Constraints:([\s\S]*)/);
-    if (constraintsMatch) {
-      constraints = constraintsMatch[1]
-        .split('\n')
-        .map(line => line.replace(/[`\s]+/g, '').replace(/\.$/, ''))
-        .filter(line => line.length > 0 && !line.startsWith('Examples:'));
-      // Try to restore spaces and formatting
-      constraints = constraintsMatch[1]
-        .split('\n')
-        .map(line => line.replace(/[`]/g, '').trim())
-        .filter(line => line.length > 0 && !line.startsWith('Examples:'));
-    }
-    return { examples, constraints };
-  }
-
-  // If loading or problem is null, don't try to access problem fields
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
-  if (!problem) return <div className="p-6 text-center">Problem not found</div>;
-
-  // If examples or constraints are empty, try to extract from description
-  let displayExamples = problem.examples && problem.examples.length > 0 ? problem.examples : [];
-  let displayConstraints = problem.constraints && problem.constraints.length > 0 ? problem.constraints : [];
-  if (displayExamples.length === 0 || displayConstraints.length === 0) {
-    const extracted = extractExamplesAndConstraints(problem.description);
-    if (displayExamples.length === 0) displayExamples = extracted.examples;
-    if (displayConstraints.length === 0) displayConstraints = extracted.constraints;
-  }
+  if (loading) return <div className="p-6 text-center">Loading...</div>
+  if (!problem) return <div className="p-6 text-center">Problem not found</div>
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
-      case 'easy': return 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
-      case 'medium': return 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20'
-      case 'hard': return 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-      default: return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20'
+      case 'easy':
+        return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+      case 'medium':
+        return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+      case 'hard':
+        return 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      default:
+        return ''
     }
+  }
+
+  // Split description into paragraphs and identify code-like blocks (lines with leading whitespace or code)
+  const renderDescription = (desc: string) => {
+    const paragraphs = desc.split(/\n{2,}/).filter((p) => p.trim())
+    return paragraphs.map((para, i) => {
+      // Detect code blocks: paragraphs that start with common code markers or look like examples
+      const looksLikeCode =
+        /^[ \t]{2,}/.test(para) ||
+        /Input:|Output:|Example \d+:/i.test(para)
+      if (looksLikeCode) {
+        return (
+          <pre
+            key={i}
+            className="overflow-x-auto whitespace-pre-wrap rounded-lg border bg-muted/60 p-4 font-mono text-xs leading-relaxed"
+          >
+            {para.trim()}
+          </pre>
+        )
+      }
+      return (
+        <p key={i} className="leading-relaxed text-muted-foreground">
+          {para.trim()}
+        </p>
+      )
+    })
   }
 
   return (
     <div className="space-y-6">
       <Toaster />
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{problem.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary" className={getDifficultyColor(problem.difficulty)}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-3">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{problem.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={getDifficultyBadgeClass(problem.difficulty)}>
               {problem.difficulty}
             </Badge>
-            {problem.topics.map(topic => (
-              <Badge key={topic} variant="outline">{topic}</Badge>
-            ))}
+            <span className="text-sm text-muted-foreground">
+              Acceptance {problem.acceptance_rate}%
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <div className="flex flex-wrap gap-1.5">
+              {problem.topics.slice(0, 4).map(topic => (
+                <Badge key={topic} variant="secondary">{topic}</Badge>
+              ))}
+              {problem.topics.length > 4 && (
+                <Badge variant="secondary">+{problem.topics.length - 4}</Badge>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <label
+            htmlFor="completed"
+            className="flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
             <Checkbox
               id="completed"
               checked={isCompleted}
-              onCheckedChange={(checked) => setIsCompleted(checked as boolean)}
+              disabled={completionPending}
+              onCheckedChange={(checked) => handleToggleComplete(checked as boolean)}
             />
-            <label htmlFor="completed" className="text-sm font-medium">Mark as completed</label>
-          </div>
+            Completed
+          </label>
           <HelpModal problemId={resolvedParams.id} problemTitle={problem.title} />
           <Button asChild>
-            <a href={problem.url} target="_blank" rel="noopener noreferrer">View on LeetCode</a>
+            <a href={problem.url} target="_blank" rel="noopener noreferrer">
+              View on LeetCode
+              <ExternalLink className="size-4" />
+            </a>
           </Button>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="description">Description</TabsTrigger>
-          <TabsTrigger value="solution">Solution</TabsTrigger>
-          <TabsTrigger value="discussion">Discussion</TabsTrigger>
-          <TabsTrigger value="explanation">Explanation</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+          <TabsTrigger value="description" className="gap-1.5">
+            <FileText className="size-4" /> Description
+          </TabsTrigger>
+          <TabsTrigger value="solution" className="gap-1.5">
+            <Code2 className="size-4" /> Solution
+          </TabsTrigger>
+          <TabsTrigger value="discussion" className="gap-1.5">
+            <MessageSquare className="size-4" /> Discussion
+          </TabsTrigger>
+          <TabsTrigger value="explanation" className="gap-1.5">
+            <Sparkles className="size-4" /> Explanation
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="description" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Problem Description</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Only show the main description, without examples/constraints */}
-              <p className="whitespace-pre-line">
-                {(() => {
-                  // Remove Examples and Constraints sections from the description
-                  let desc = problem.description;
-                  desc = desc.replace(/Examples?:[\s\S]*?(?=Constraints:|$)/gi, '').trim();
-                  desc = desc.replace(/Example\s*\d*:[\s\S]*?(?=Example|Constraints:|$)/gi, '').trim();
-                  desc = desc.replace(/Constraints:[\s\S]*/gi, '').trim();
-                  return desc;
-                })()}
-              </p>
-            </CardContent>
-          </Card>
-          {/* Companies & Acceptance Rate Section (side by side, as headings, improved layout, smaller card) */}
-          <Card>
-            <CardContent className="flex flex-col sm:flex-row items-stretch gap-8 py-3">
-              {/* Companies Section */}
-              <div className="flex-1 flex flex-col items-start w-full sm:w-auto">
-                <h2 className="text-lg font-semibold mb-2">Companies</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 w-full">
-                  {problem.companies.map(company => (
-                    <div key={company} className="flex items-center justify-center">
-                      <Badge variant="secondary" className="text-lg px-4 py-2 w-full text-center whitespace-nowrap">{company}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Acceptance Rate Section */}
-              <div className="flex flex-col items-center justify-center w-full sm:w-auto min-w-[180px] max-w-[220px]">
-                <h2 className="text-lg font-semibold mb-2">Acceptance Rate</h2>
-                <div className="flex flex-col items-center">
-                  <PieChart acceptanceRate={problem.acceptance_rate} size={100} />
-                  <span className="text-2xl font-bold mt-2">{problem.acceptance_rate}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Examples Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Examples</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {displayExamples.length === 0 ? (
-                <p className="text-muted-foreground">No examples found.</p>
-              ) : (
-                displayExamples.map((example, index) => (
+      <Card>
+        <CardHeader>
+          <CardTitle>Problem Description</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="whitespace-pre-line">{problem.description}</p>
+          <div className="space-y-2">
+            <h3 className="font-semibold">Examples:</h3>
+            {problem.examples.map((example, index) => (
                   <div key={index} className="bg-muted p-4 rounded-lg">
-                    <p><strong>Input:</strong> {example.input}</p>
-                    <p><strong>Output:</strong> {example.output}</p>
-                    {example.explanation && <p><strong>Explanation:</strong> {example.explanation}</p>}
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-          {/* Constraints Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Constraints</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {displayConstraints.length === 0 ? (
-                <p className="text-muted-foreground">No constraints found.</p>
-              ) : (
+                <p><strong>Input:</strong> {example.input}</p>
+                <p><strong>Output:</strong> {example.output}</p>
+                {example.explanation && <p><strong>Explanation:</strong> {example.explanation}</p>}
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold">Constraints:</h3>
                 <ul className="list-disc list-inside">
-                  {displayConstraints.map((constraint, index) => (
-                    <li key={index}>{constraint}</li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+              {problem.constraints.map((constraint, index) => (
+                <li key={index}>{constraint}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="space-y-2">
+            <h3 className="font-semibold">Companies:</h3>
+            <div className="flex flex-wrap gap-2">
+                  {problem.companies.map(company => (
+                <Badge key={company} variant="secondary">{company}</Badge>
+              ))}
+            </div>
+          </div>
+          <p><strong>Acceptance Rate:</strong> {problem.acceptance_rate}%</p>
+        </CardContent>
+      </Card>
         </TabsContent>
         <TabsContent value="solution">
-          <Card>
-            <CardHeader>
-              <CardTitle>Solution</CardTitle>
-              <CardDescription>Choose your preferred programming language</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] bg-muted rounded-lg flex items-center justify-center">
-                Code Editor Placeholder
-              </div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Code2}
+            title="Code editor coming soon"
+            description="An in-browser editor with language selection and test runner is on the way. Meanwhile, you can solve this problem on LeetCode."
+            action={
+              <Button asChild variant="outline">
+                <a href={problem.url} target="_blank" rel="noopener noreferrer">
+                  Open on LeetCode
+                  <ExternalLink className="size-4" />
+                </a>
+              </Button>
+            }
+          />
         </TabsContent>
         <TabsContent value="discussion">
-          <Card>
-            <CardHeader>
-              <CardTitle>Discussion</CardTitle>
-              <CardDescription>Join the conversation about this problem</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] bg-muted rounded-lg flex items-center justify-center">
-                Discussion Placeholder
-              </div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={MessageSquare}
+            title="No discussion yet"
+            description="Discussions will appear here once the community starts sharing approaches and solutions."
+            action={
+              <Button
+                variant="outline"
+                onClick={() => setActiveTab("explanation")}
+              >
+                See AI explanation
+                <ArrowRight className="size-4" />
+              </Button>
+            }
+          />
         </TabsContent>
         <TabsContent value="explanation">
           <Card>
             <CardHeader>
-              <CardTitle>Problem Explanation</CardTitle>
-              <CardDescription>Get a detailed explanation of the problem and its solution</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="size-5 text-primary" />
+                AI Explanation
+              </CardTitle>
+              <CardDescription>
+                Generate a detailed walkthrough with approaches, edge cases, and tips.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {!explanation && !explanationLoading && (
-                <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                  <p className="text-muted-foreground">Click the button below to get a detailed explanation</p>
-                  <Button 
+                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/30 py-12 text-center">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Lightbulb className="size-6" />
+                  </div>
+                  <div className="max-w-sm space-y-1">
+                    <h3 className="text-base font-semibold">Unlock the solution approach</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Generate an AI-powered breakdown with intuition, approaches, and complexity analysis.
+                    </p>
+                  </div>
+                  <Button
                     onClick={fetchExplanation}
                     disabled={explanationLoading}
                   >
-                    {explanationLoading ? 'Generating Explanation...' : 'Get Explanation'}
+                    <Sparkles className="size-4" />
+                    Generate explanation
                   </Button>
                 </div>
               )}
               {explanationLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="flex flex-col items-center justify-center gap-3 py-12">
+                  <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <p className="text-sm text-muted-foreground">
+                    Thinking through the problem...
+                  </p>
                 </div>
               )}
               {explanation && (

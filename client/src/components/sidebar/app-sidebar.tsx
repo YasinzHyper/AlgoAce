@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Code2, Home, LogOut, Map, Settings, Target, User } from "lucide-react"
+import { BarChart3, Code2, Home, LayoutDashboard, LogOut, Map, Settings, Target, User } from "lucide-react"
 import { logout } from "@/app/login/actions"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -29,15 +29,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-const SIDEBAR_WIDTH = "16em"
-const SIDEBAR_WIDTH_MOBILE = "12rem"
-
 // Navigation items for the sidebar
 const navigationItems = [
   {
     title: "Home",
     icon: Home,
     href: "/",
+
+  },
+  {
+    title: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard",
 
   },
   {
@@ -163,15 +166,15 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
-              <a href="/" >
-                <div className="flex aspect-square  h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Link href="/">
+                <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <Code2 className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="text-lg font-bold">AlgoAce</span>
                   <span className="text-xs text-muted-foreground">DSA Preparation</span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -1,218 +1,461 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  LineChart,
-  Line,
-  BarChart,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/layout/page-header";
+import { StatCard } from "@/components/layout/stat-card";
+import { EmptyState } from "@/components/layout/empty-state";
+import { useAnalytics } from "@/hooks/use-analytics";
+import { useInterviews } from "@/hooks/use-interview";
+import { BarChart3, CheckCircle2, Flame, ListChecks, Mic, TrendingUp, Trophy } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
+import Link from "next/link";
+import {
+  Area,
+  AreaChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+} from "recharts";
 
-// Mock data for charts
-const progressData = [
-  { date: 'Week 1', problems: 5, score: 65 },
-  { date: 'Week 2', problems: 8, score: 70 },
-  { date: 'Week 3', problems: 12, score: 75 },
-  { date: 'Week 4', problems: 15, score: 80 },
-  { date: 'Week 5', problems: 20, score: 85 },
+// Theme-aware chart palette driven by CSS variables
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
-const topicData = [
-  { name: 'Arrays', value: 90 },
-  { name: 'Strings', value: 85 },
-  { name: 'DP', value: 70 },
-  { name: 'Graphs', value: 65 },
-  { name: 'Trees', value: 75 },
-];
+const axisStyle = {
+  fontSize: 12,
+  fill: "var(--muted-foreground)",
+};
 
-const difficultyData = [
-  { name: 'Easy', value: 20 },
-  { name: 'Medium', value: 15 },
-  { name: 'Hard', value: 7 },
-];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const tooltipStyle = {
+  backgroundColor: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius)",
+  color: "var(--popover-foreground)",
+};
 
 export default function ProgressOverviewPage() {
+  const { data, loading, error, refresh } = useAnalytics();
+  const { interviews, stats: interviewStats } = useInterviews();
+
+  // Chronological score series for the Interviews tab (completed only).
+  const interviewSeries = [...interviews]
+    .filter((iv) => iv.status === "completed" && iv.overall_score != null)
+    .sort((a, b) => +new Date(a.started_at) - +new Date(b.started_at))
+    .map((iv) => ({
+      label: format(new Date(iv.started_at), "MMM d"),
+      score: iv.overall_score,
+      type: iv.interview_type,
+    }));
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <PageHeader
+          title="Analytics"
+          description="Track your problem-solving progress, streaks, and topic mastery."
+        />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-[420px] w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="space-y-8">
+        <PageHeader title="Analytics" />
+        <EmptyState
+          icon={BarChart3}
+          title="Couldn't load analytics"
+          description={error ?? "Something went wrong while fetching your progress."}
+          action={
+            <Button onClick={() => refresh()} variant="outline">
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const { totals, weekly_progress, topic_mastery, difficulty_distribution, recent_activity } = data;
+
+  const hasAnyActivity = totals.problems_solved > 0 || totals.topics_completed > 0;
+  const topTopics = topic_mastery.slice(0, 8);
+  const hasDifficultyData = difficulty_distribution.some((d) => d.value > 0);
+
+  const weekTrend =
+    totals.solved_this_week > 0
+      ? { value: `+${totals.solved_this_week} this week`, positive: true }
+      : undefined;
+
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold">Progress Overview</h1>
-      
-      {/* Progress Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Completed Problems</CardTitle>
-            <CardDescription>Total problems solved</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">42</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Streak</CardTitle>
-            <CardDescription>Days of consistent practice</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">7</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Average Score</CardTitle>
-            <CardDescription>Based on problem difficulty</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">85%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Time Spent</CardTitle>
-            <CardDescription>Total hours dedicated</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">120</p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      <PageHeader
+        title="Analytics"
+        description="Track your problem-solving progress, streaks, and topic mastery."
+      />
+
+      <div className="grid gap-4 stagger-children sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Problems Solved"
+          value={totals.problems_solved}
+          icon={CheckCircle2}
+          trend={weekTrend}
+        />
+        <StatCard
+          title="Current Streak"
+          value={`${totals.current_streak} ${totals.current_streak === 1 ? "day" : "days"}`}
+          icon={Flame}
+          sparkle={totals.current_streak > 0}
+          description={
+            totals.last_activity_date ? `last active ${totals.last_activity_date}` : "no activity yet"
+          }
+        />
+        <StatCard
+          title="Longest Streak"
+          value={`${totals.longest_streak} ${totals.longest_streak === 1 ? "day" : "days"}`}
+          icon={Trophy}
+          description="personal best"
+        />
+        <StatCard
+          title="Topics Completed"
+          value={totals.topics_completed}
+          icon={ListChecks}
+          description="across all roadmaps"
+        />
       </div>
 
-      {/* Charts and Detailed Analytics */}
-      <Tabs defaultValue="progress" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="progress">Progress Over Time</TabsTrigger>
-          <TabsTrigger value="topics">Topic Mastery</TabsTrigger>
-          <TabsTrigger value="difficulty">Difficulty Distribution</TabsTrigger>
-        </TabsList>
+      {!hasAnyActivity ? (
+        <EmptyState
+          icon={BarChart3}
+          title="No activity yet"
+          description="Mark problems as completed from your roadmap to start building your analytics."
+          action={
+            <Button asChild>
+              <Link href="/problems">Go to problems</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <Tabs defaultValue="progress" className="space-y-4">
+            <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+              <TabsTrigger value="progress" className="gap-1.5">
+                <TrendingUp className="size-4" />
+                <span className="hidden sm:inline">Progress</span>
+              </TabsTrigger>
+              <TabsTrigger value="topics">Topics</TabsTrigger>
+              <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
+              <TabsTrigger value="interviews" className="gap-1.5">
+                <Mic className="size-4" />
+                <span className="hidden sm:inline">Interviews</span>
+              </TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="progress" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Over Time</CardTitle>
-              <CardDescription>Your problem-solving progress and scores</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="problems"
-                      stroke="#8884d8"
-                      name="Problems Solved"
+            <TabsContent value="progress">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Progress Over Time</CardTitle>
+                  <CardDescription>
+                    Problems solved per week and running total over the last 12 weeks
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[320px] sm:h-[380px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={weekly_progress}>
+                        <defs>
+                          <linearGradient id="problemsGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+                            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="cumulativeGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.4} />
+                            <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                        <XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" tick={axisStyle} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
+                        <YAxis yAxisId="right" orientation="right" tick={axisStyle} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Legend iconType="circle" />
+                        <Area
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="problems"
+                          name="Solved This Week"
+                          stroke="var(--chart-1)"
+                          strokeWidth={2}
+                          fill="url(#problemsGradient)"
+                        />
+                        <Area
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="cumulative"
+                          name="Total Solved"
+                          stroke="var(--chart-2)"
+                          strokeWidth={2}
+                          fill="url(#cumulativeGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="topics">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Topic Mastery</CardTitle>
+                  <CardDescription>Problems solved per topic tag (top {topTopics.length})</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {topTopics.length > 0 ? (
+                    <div className="h-[320px] sm:h-[380px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={topTopics}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                          <XAxis
+                            dataKey="name"
+                            tick={axisStyle}
+                            tickLine={false}
+                            axisLine={false}
+                            interval={0}
+                            angle={-30}
+                            textAnchor="end"
+                            height={70}
+                          />
+                          <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
+                          <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "var(--muted)" }} />
+                          <Bar dataKey="value" name="Solved" radius={[6, 6, 0, 0]} fill="var(--primary)" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={BarChart3}
+                      title="No topic data yet"
+                      description="Complete a few problems to see your strongest topics."
+                      className="border-0 bg-transparent p-8"
                     />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="score"
-                      stroke="#82ca9d"
-                      name="Average Score"
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="difficulty">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Difficulty Distribution</CardTitle>
+                  <CardDescription>Breakdown of solved problems by difficulty</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {hasDifficultyData ? (
+                    <div className="h-[320px] sm:h-[380px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={difficulty_distribution.filter((d) => d.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={120}
+                            paddingAngle={4}
+                            dataKey="value"
+                            stroke="var(--background)"
+                            strokeWidth={4}
+                            labelLine={false}
+                            label={({ name, percent }) =>
+                              `${name} ${(percent * 100).toFixed(0)}%`
+                            }
+                          >
+                            {difficulty_distribution
+                              .filter((d) => d.value > 0)
+                              .map((entry, index) => (
+                                <Cell
+                                  key={entry.name}
+                                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                                />
+                              ))}
+                          </Pie>
+                          <Tooltip contentStyle={tooltipStyle} />
+                          <Legend iconType="circle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={BarChart3}
+                      title="No difficulty data yet"
+                      description="Solve an Easy, Medium, or Hard to populate this chart."
+                      className="border-0 bg-transparent p-8"
                     />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="topics" className="space-y-4">
+            <TabsContent value="interviews">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Interview Scores Over Time</CardTitle>
+                      <CardDescription>
+                        Rubric-graded mock interview performance (0–100)
+                      </CardDescription>
+                    </div>
+                    {interviewStats && (
+                      <div className="flex gap-4 text-sm">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Avg</p>
+                          <p className="font-mono font-bold tabular-nums">
+                            {interviewStats.avg_score ?? "—"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Best</p>
+                          <p className="font-mono font-bold tabular-nums">
+                            {interviewStats.best_score ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {interviewSeries.length > 0 ? (
+                    <div className="h-[320px] sm:h-[380px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={interviewSeries}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                          <XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} />
+                          <YAxis
+                            domain={[0, 100]}
+                            tick={axisStyle}
+                            tickLine={false}
+                            axisLine={false}
+                            width={32}
+                          />
+                          <Tooltip
+                            contentStyle={tooltipStyle}
+                            formatter={(v: number, _n, p) => [
+                              `${v}/100`,
+                              String(p?.payload?.type ?? "score").replace("_", " "),
+                            ]}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="score"
+                            name="Score"
+                            stroke="var(--chart-3)"
+                            strokeWidth={2}
+                            dot={{ r: 4, fill: "var(--chart-3)" }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Mic}
+                      title="No scored interviews yet"
+                      description="Complete a mock interview to start tracking your performance trend."
+                      className="border-0 bg-transparent p-8"
+                      action={
+                        <Button asChild>
+                          <Link href="/practice/mock-interviews">Start an interview</Link>
+                        </Button>
+                      }
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
           <Card>
             <CardHeader>
-              <CardTitle>Topic Mastery</CardTitle>
-              <CardDescription>Your proficiency in different topics</CardDescription>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Your latest problem-solving sessions</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topicData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="value" fill="#8884d8" name="Mastery %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <CardContent className="divide-y">
+              {recent_activity.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Nothing recent — mark a problem complete to see it here.
+                </p>
+              ) : (
+                recent_activity.map((item, idx) => (
+                  <div
+                    key={`${item.type}-${item.problem_id ?? item.title}-${idx}`}
+                    className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {item.type === "problem" && item.problem_id ? (
+                          <Link href={`/problems/${item.problem_id}`} className="hover:underline">
+                            {item.title}
+                          </Link>
+                        ) : (
+                          item.title
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.topic}
+                        {item.difficulty ? ` · ${item.difficulty}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge
+                        variant="default"
+                        className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      >
+                        {item.type === "problem" ? "Solved" : "Topic"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.completed_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="difficulty" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Problem Difficulty Distribution</CardTitle>
-              <CardDescription>Breakdown of solved problems by difficulty</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={difficultyData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={150}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {difficultyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Your latest problem-solving sessions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h3 className="font-semibold">Two Sum</h3>
-                  <p className="text-sm text-gray-500">Arrays • Easy</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-green-600">Solved</p>
-                  <p className="text-sm text-gray-500">2 hours ago</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
   );
-} 
+}

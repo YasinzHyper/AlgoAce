@@ -43,6 +43,11 @@
   --radius-xl: calc(var(--radius) + 4px);
   --animate-marquee: marquee var(--duration) infinite linear;
   --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  --animate-fade-in-up: fade-in-up 0.5s ease-out both;
+  --animate-meteor: meteor 5s linear infinite;
+  --animate-sparkle: sparkle 2.5s ease-in-out infinite;
+  --animate-border-glide: border-glide 6s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
   @keyframes marquee {
   from {
     transform: translateX(0);
@@ -59,6 +64,58 @@
     transform: translateY(calc(-100% - var(--gap)));
     }
   }
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes meteor {
+    0% {
+      transform: rotate(215deg) translateX(0);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: rotate(215deg) translateX(-500px);
+      opacity: 0;
+    }
+  }
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0.5) rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1) rotate(180deg);
+    }
+  }
+  @keyframes border-glide {
+    to {
+      --border-angle: 360deg;
+    }
+  }
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
 
 :root {
@@ -558,7 +615,78 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+  ::-webkit-scrollbar {
+    @apply size-2;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+/* --- React Flow theme integration ------------------------------------- */
+/* xyflow ships light-only controls; map them to our design tokens so they
+   remain visible in dark mode and across color themes. */
+.react-flow__controls {
+  @apply overflow-hidden rounded-lg border border-border bg-card shadow-md;
+}
+.react-flow__controls-button {
+  @apply border-0 border-b border-border bg-card text-foreground transition-colors last:border-b-0 hover:bg-accent;
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+.react-flow__minimap {
+  @apply rounded-lg border border-border bg-card;
+}
+.react-flow__attribution {
+  @apply rounded bg-background/60 text-muted-foreground;
+}
+.react-flow__attribution a {
+  @apply text-muted-foreground;
+}
+
+/* --- Decorative utilities --------------------------------------------- */
+@utility glide-border {
+  position: relative;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(
+        from var(--border-angle),
+        var(--border) 0deg,
+        var(--border) 300deg,
+        var(--primary) 320deg,
+        var(--border) 360deg
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: border-glide 8s linear infinite;
+}
+
+@utility stagger-children {
+  & > * {
+    animation: fade-in-up 0.5s ease-out both;
+  }
+  & > *:nth-child(1) { animation-delay: 0ms; }
+  & > *:nth-child(2) { animation-delay: 60ms; }
+  & > *:nth-child(3) { animation-delay: 120ms; }
+  & > *:nth-child(4) { animation-delay: 180ms; }
+  & > *:nth-child(5) { animation-delay: 240ms; }
+  & > *:nth-child(6) { animation-delay: 300ms; }
+  & > *:nth-child(7) { animation-delay: 360ms; }
+  & > *:nth-child(8) { animation-delay: 420ms; }
 }

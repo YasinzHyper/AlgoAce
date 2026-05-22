@@ -1,12 +1,37 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Lightbulb, ListChecks, LineChart } from "lucide-react";
+import {
+  ArrowRight,
+  Bot,
+  Dices,
+  Flame,
+  Lightbulb,
+  LineChart,
+  ListChecks,
+  MessageCircle,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Marquee } from "@/components/magicui/marquee";
-import Image from "next/image";
 import Link from "next/link";
-import { cn } from "@/utils/supabase/utils"
-import { supabase } from "@/utils/supabase/client";
+import { cn } from "@/utils/supabase/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function Home() {
   const reviews = [
@@ -65,29 +90,18 @@ export default function Home() {
     return (
       <figure
         className={cn(
-          "relative h-full w-64 cursor-pointer overflow-hidden rounded-xl border p-4",
-          // light styles
-          "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
-          // dark styles
-          "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]"
+          "relative h-full w-64 overflow-hidden rounded-xl border bg-card p-4",
+          "transition-colors hover:bg-accent/40"
         )}
       >
-        <div className="flex flex-row items-center gap-2">
-          <img
-            className="rounded-full"
-            width="32"
-            height="32"
-            alt=""
-            src={img}
-          />
+        <div className="flex items-center gap-2">
+          <img className="rounded-full" width="32" height="32" alt="" src={img} />
           <div className="flex flex-col">
-            <figcaption className="text-sm font-medium dark:text-white">
-              {name}
-            </figcaption>
-            <p className="text-xs font-medium dark:text-white/40">{username}</p>
+            <figcaption className="text-sm font-medium">{name}</figcaption>
+            <p className="text-xs text-muted-foreground">{username}</p>
           </div>
         </div>
-        <blockquote className="mt-2 text-sm">{body}</blockquote>
+        <blockquote className="mt-2 text-sm text-muted-foreground">{body}</blockquote>
       </figure>
     );
   };
@@ -101,7 +115,8 @@ export default function Home() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
       role: "bot",
-      content: "Hey there! I'm AlgoBuddy 🤖. Need help with anything?",
+      content:
+        "Hi! I'm AlgoBuddy — ask me anything about data structures, algorithms, or interview prep.",
     },
   ]);
   const [userInput, setUserInput] = useState("");
@@ -356,7 +371,6 @@ export default function Home() {
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [activityDates, setActivityDates] = useState<string[]>([]);
-  const calendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -364,16 +378,6 @@ export default function Home() {
     let dates: string[] = data ? JSON.parse(data) : [];
     setActivityDates(dates);
   }, [showCalendar]);
-
-  // Helper to get days in current month
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-  // Helper to check if a date is in activityDates
-  const isVisited = (date: Date) => {
-    const ymd = date.toISOString().slice(0, 10);
-    return activityDates.includes(ymd);
-  };
 
   // --- SEARCH BAR LOGIC (SIMPLE, ERROR-FREE, ALL DATA SOURCES) ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -474,252 +478,278 @@ export default function Home() {
     }
   }
 
-  return (
-    <div className="flex flex-1 flex-col gap-6"> {/* Reduced gap from 12 to 6 */}
-      {/* Header with Top-Right Additions */}
-      <div className="flex justify-between items-start flex-wrap gap-2"> {/* Reduced gap from 4 to 2 */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome to AlgoAce
-          </h1>
-          <p className="text-muted-foreground">
-            Your comprehensive platform for Data Structures and Algorithms
-            preparation
-          </p>
+  const currentTip = getCurrentTip();
+
+  const features = [
+    {
+      href: "/roadmap",
+      icon: Lightbulb,
+      title: "Follow the roadmap",
+      description: "Structured learning paths to guide your DSA journey.",
+    },
+    {
+      href: "/problems",
+      icon: ListChecks,
+      title: "Practice problems",
+      description: "Curated problems to strengthen your problem-solving skills.",
+    },
+    {
+      href: "/analytics",
+      icon: LineChart,
+      title: "Track your progress",
+      description: "Visualize your learning journey with detailed analytics.",
+    },
+  ];
+
+  const renderSearchGroup = (
+    label: string,
+    items: { key: string; content: React.ReactNode; href?: string }[],
+    offset: number
+  ) =>
+    items.length > 0 && (
+      <div className="py-1">
+        <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
         </div>
-        {/* Simple Search Bar (Global) */}
-        <div ref={searchRef} className="w-full sm:w-72 max-w-md ml-auto mt-1 sm:mt-0"> {/* Reduced mt-2 to mt-1 */}
-          <div className="relative">
-            <input
-              type="text"
+        {items.map((item, i) => {
+          const idx = offset + i;
+          const baseClass = cn(
+            "mx-1 block rounded-md px-3 py-2 text-sm transition-colors",
+            activeIndex === idx ? "bg-accent text-accent-foreground" : "hover:bg-accent/60"
+          );
+          return item.href ? (
+            <a
+              key={item.key}
+              href={item.href}
+              className={baseClass}
+              tabIndex={-1}
+              onMouseEnter={() => setActiveIndex(idx)}
+            >
+              {item.content}
+            </a>
+          ) : (
+            <div
+              key={item.key}
+              className={cn(baseClass, "cursor-default")}
+              tabIndex={-1}
+              onMouseEnter={() => setActiveIndex(idx)}
+            >
+              {item.content}
+            </div>
+          );
+        })}
+      </div>
+    );
+
+  return (
+    <div className="flex flex-1 flex-col gap-10">
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-background p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:p-8 lg:p-10">
+        {/* Decorative gradient blobs */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-primary/10 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-24 -left-24 size-64 rounded-full bg-primary/5 blur-3xl"
+        />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl space-y-4">
+            <Badge variant="secondary" className="gap-1.5">
+              <Sparkles className="size-3" />
+              DSA preparation, simplified
+            </Badge>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Welcome to AlgoAce
+            </h1>
+            <p className="text-base text-muted-foreground sm:text-lg">
+              Build a personalized roadmap, solve curated problems, and track
+              your growth — all in one place.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild size="lg">
+                <Link href="/roadmap">
+                  Get started <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="lg" onClick={handleRandomProblem}>
+                <Dices className="size-4" />
+                Random problem
+              </Button>
+              <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="group inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-accent hover:shadow-md"
+                    title="Your streak grows each consecutive day you visit. Missing a day resets it."
+                  >
+                    <Flame className="size-4 text-orange-500 transition-transform group-hover:scale-110" />
+                    {streak}-day streak
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={8}
+                  className="w-auto border-none p-0 shadow-none"
+                >
+                  <MiniCalendar activityDates={activityDates} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Global search */}
+          <div ref={searchRef} className="relative w-full lg:w-80">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
               value={query}
-              onChange={e => { setQuery(e.target.value); setShowSearch(true); setActiveIndex(0); }}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setShowSearch(true);
+                setActiveIndex(0);
+              }}
               onFocus={() => setShowSearch(true)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Search..."
-              className="w-full px-5 py-2 pr-10 rounded-xl border border-primary dark:border-primary shadow text-base focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors"
+              placeholder="Search problems, topics, FAQs..."
               aria-label="Global search"
-              style={{ boxShadow: '0 2px 12px 0 rgba(0,0,0,0.04)' }}
               autoComplete="off"
+              className="h-11 bg-background pl-9 pr-9"
             />
-            {/* Clear (X) button when typing */}
             {query && (
               <button
                 type="button"
-                className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 focus:outline-none"
                 aria-label="Clear search"
-                tabIndex={0}
-                onClick={() => { setQuery(""); setShowSearch(false); setActiveIndex(0); }}
-                style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
+                onClick={() => {
+                  setQuery("");
+                  setShowSearch(false);
+                  setActiveIndex(0);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24">
-                  <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M6 6l12 12M6 18L18 6" />
-                </svg>
+                <X className="size-4" />
               </button>
             )}
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 focus:outline-none"
-              aria-label="Search"
-              tabIndex={0}
-              onClick={() => setShowSearch(true)}
-              style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M20 20l-3.5-3.5" />
-              </svg>
-            </button>
             {showSearch && query && (
-              <div className="absolute mt-2 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="absolute z-50 mt-2 max-h-96 w-full overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg">
                 {categorizedResults.length === 0 ? (
-                  <div className="p-4 text-gray-500 dark:text-gray-400 text-sm">No results found.</div>
+                  <div className="p-4 text-sm text-muted-foreground">
+                    No results found.
+                  </div>
                 ) : (
                   <>
-                    {/* Problems Category */}
-                    {filteredProblems.length > 0 && (
-                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-blue-100 dark:border-blue-900/30 px-4 pt-2 pb-1">
-                        <div className="text-xs font-bold text-blue-700 dark:text-blue-300 tracking-wide uppercase">Problems</div>
-                      </div>
+                    {renderSearchGroup(
+                      "Problems",
+                      filteredProblems.map((p) => ({
+                        key: `p-${p.id}`,
+                        href: `/problems/${p.id}`,
+                        content: p.title,
+                      })),
+                      0
                     )}
-                    {filteredProblems.map((p, i) => (
-                      <a
-                        key={p.id}
-                        href={`/problems/${p.id}`}
-                        className={`block px-4 py-2 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-sm text-blue-900 dark:text-blue-200 transition-colors rounded ${activeIndex === i ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}
-                        tabIndex={-1}
-                        onMouseEnter={() => setActiveIndex(i)}
-                        style={{ borderBottom: i === filteredProblems.length - 1 && (filteredRoadmap.length > 0 || filteredFaqs.length > 0 || filteredReviews.length > 0) ? '1px solid #e0e7ef' : undefined }}
-                      >
-                        {p.title}
-                      </a>
-                    ))}
-                    {filteredProblems.length > 0 && (filteredRoadmap.length > 0 || filteredFaqs.length > 0 || filteredReviews.length > 0) && (
-                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                    {renderSearchGroup(
+                      "Roadmap",
+                      filteredRoadmap.map((t) => ({
+                        key: `r-${t.id}`,
+                        href: "/roadmap",
+                        content: t.title,
+                      })),
+                      filteredProblems.length
                     )}
-
-                    {/* Roadmap Category */}
-                    {filteredRoadmap.length > 0 && (
-                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-purple-100 dark:border-purple-900/30 px-4 pt-2 pb-1">
-                        <div className="text-xs font-bold text-purple-700 dark:text-purple-300 tracking-wide uppercase">Roadmap</div>
-                      </div>
+                    {renderSearchGroup(
+                      "FAQ",
+                      filteredFaqs.map((f) => ({
+                        key: `f-${f.question}`,
+                        content: (
+                          <>
+                            <span className="font-medium">{f.question}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {f.answer}
+                            </span>
+                          </>
+                        ),
+                      })),
+                      filteredProblems.length + filteredRoadmap.length
                     )}
-                    {filteredRoadmap.map((t, i) => (
-                      <a
-                        key={t.id}
-                        href="/roadmap"
-                        className={`block px-4 py-2 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-sm text-purple-900 dark:text-purple-200 transition-colors rounded ${activeIndex === filteredProblems.length + i ? 'bg-purple-50 dark:bg-purple-900/30' : ''}`}
-                        tabIndex={-1}
-                        onMouseEnter={() => setActiveIndex(filteredProblems.length + i)}
-                        style={{ borderBottom: i === filteredRoadmap.length - 1 && (filteredFaqs.length > 0 || filteredReviews.length > 0) ? '1px solid #ede9fe' : undefined }}
-                      >
-                        {t.title}
-                      </a>
-                    ))}
-                    {filteredRoadmap.length > 0 && (filteredFaqs.length > 0 || filteredReviews.length > 0) && (
-                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                    {renderSearchGroup(
+                      "Reviews",
+                      filteredReviews.map((r) => ({
+                        key: `rv-${r.name}-${r.body}`,
+                        content: (
+                          <>
+                            <span className="font-medium">{r.name}</span>
+                            <span className="ml-1 text-muted-foreground">
+                              — {r.body}
+                            </span>
+                          </>
+                        ),
+                      })),
+                      filteredProblems.length +
+                        filteredRoadmap.length +
+                        filteredFaqs.length
                     )}
-
-                    {/* FAQ Category */}
-                    {filteredFaqs.length > 0 && (
-                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-green-100 dark:border-green-900/30 px-4 pt-2 pb-1">
-                        <div className="text-xs font-bold text-green-700 dark:text-green-300 tracking-wide uppercase">FAQ</div>
-                      </div>
-                    )}
-                    {filteredFaqs.map((f, i) => (
-                      <div
-                        key={f.question}
-                        className={`block px-4 py-2 hover:bg-green-100 dark:hover:bg-green-900/40 text-sm text-green-900 dark:text-green-200 transition-colors rounded cursor-default ${activeIndex === filteredProblems.length + filteredRoadmap.length + i ? 'bg-green-50 dark:bg-green-900/30' : ''}`}
-                        tabIndex={-1}
-                        onMouseEnter={() => setActiveIndex(filteredProblems.length + filteredRoadmap.length + i)}
-                        style={{ borderBottom: i === filteredFaqs.length - 1 && filteredReviews.length > 0 ? '1px solid #d1fae5' : undefined }}
-                      >
-                        <span className="font-semibold">Q:</span> {f.question}
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{f.answer}</div>
-                      </div>
-                    ))}
-                    {filteredFaqs.length > 0 && filteredReviews.length > 0 && (
-                      <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
-                    )}
-
-                    {/* Reviews Category */}
-                    {filteredReviews.length > 0 && (
-                      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-orange-100 dark:border-orange-900/30 px-4 pt-2 pb-1">
-                        <div className="text-xs font-bold text-orange-700 dark:text-orange-300 tracking-wide uppercase">Reviews</div>
-                      </div>
-                    )}
-                    {filteredReviews.map((r, i) => (
-                      <div
-                        key={r.name + r.body}
-                        className={`block px-4 py-2 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-sm text-orange-900 dark:text-orange-200 transition-colors rounded cursor-default ${activeIndex === filteredProblems.length + filteredRoadmap.length + filteredFaqs.length + i ? 'bg-orange-50 dark:bg-orange-900/30' : ''}`}
-                        tabIndex={-1}
-                        onMouseEnter={() => setActiveIndex(filteredProblems.length + filteredRoadmap.length + filteredFaqs.length + i)}
-                      >
-                        <span className="font-semibold">{r.name}:</span> {r.body}
-                      </div>
-                    ))}
                   </>
                 )}
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Streak, Random Problem, and Tips Section */}
-      <div className="flex items-center gap-3.5 ml-auto mt-1"> {/* Reduced gap from 4 to 3.5, mt-2 to mt-1 */}
-        {/* Streak Display */}
-        <div
-          className="flex items-center gap-1 text-sm text-orange-500 font-medium cursor-pointer relative"
-          title="Your streak increases each day you visit AlgoAce. If you visit on consecutive days, your streak grows! Missing a day resets your streak."
-          onClick={() => setShowCalendar((prev) => !prev)}
-          tabIndex={0}
-          onBlur={e => {
-            setTimeout(() => {
-              if (calendarRef.current && !calendarRef.current.contains(document.activeElement)) {
-                setShowCalendar(false);
-              }
-            }, 100);
-          }}
-        >
-          🔥 <span>{streak}-day streak</span>
-          {showCalendar && (
-            <div ref={calendarRef} className="absolute top-8 right-0 z-50 bg-white border border-orange-300 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in">
-              <div className="font-semibold text-orange-700 mb-2 text-center">Your Activity This Month</div>
-              <MiniCalendar activityDates={activityDates} />
-            </div>
-          )}
-        </div>
-        {/* Random Problem Button */}
-        <button
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm shadow-md transition"
-          onClick={handleRandomProblem}
-          title="Get a random LeetCode problem to practice!"
-        >
-          🎲 Random Problem
-        </button>
-        {/* Tips/Advice Section */}
-        <div className="flex flex-col items-start">
-          <button
-            className="bg-green-400 hover:bg-green-500 text-green-900 px-8 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow transition mb-1"
+        {/* Tip of the day */}
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border bg-card/60 p-4">
+          <Badge variant="outline" className="gap-1.5">
+            <Lightbulb className="size-3" />
+            {currentTip.type === "tip" ? "DSA tip" : "Interview advice"}
+          </Badge>
+          <p className="flex-1 text-sm text-muted-foreground">{currentTip.text}</p>
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={() => setTipIndex((prev) => prev + 1)}
-            title="Show another tip or advice"
-            type="button"
           >
-            💡 {getCurrentTip().type === 'tip' ? 'DSA Tip' : 'Interview Advice'}
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-800 bg-green-200 border border-green-700 rounded p-1.5 shadow w-70 text-center">
-              {getCurrentTip().text}
-            </div>
-          </div>
+            Next tip
+          </Button>
         </div>
-      </div>
+      </section>
 
-      {/* Features Section */}
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"> {/* Reduced gap from 4 to 3 */}
-          <Link href="/roadmap" passHref>
-            <div className="rounded-lg border border-blue-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="text-blue-500 " />
-                <h3 className="text-lg font-semibold">Follow the Roadmap</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Structured learning paths to guide your DSA journey
-              </p>
-            </div>
+      {/* Features */}
+      <section className="grid gap-4 md:grid-cols-3">
+        {features.map((feature, idx) => (
+          <Link
+            key={feature.href}
+            href={feature.href}
+            className="group animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500"
+            style={{ animationDelay: `${idx * 100}ms` }}
+          >
+            <Card className="relative h-full overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:shadow-lg group-hover:shadow-primary/5">
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+              />
+              <CardHeader>
+                <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/15">
+                  <feature.icon className="size-5" />
+                </div>
+                <CardTitle className="flex items-center justify-between">
+                  {feature.title}
+                  <ArrowRight className="size-4 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-primary" />
+                </CardTitle>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardHeader>
+            </Card>
           </Link>
+        ))}
+      </section>
 
-          <Link href="/problems" passHref>
-            <div className="rounded-lg border border-green-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
-              <div className="flex items-center gap-2 mb-2">
-                <ListChecks className="text-green-500" />
-                <h3 className="text-lg font-semibold">Practice Problems</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Curated problems to strengthen your problem-solving skills
-              </p>
-            </div>
-          </Link>
-
-        <Link href="/analytics" passHref>
-          <div className="rounded-lg border border-purple-500 bg-card p-6 shadow-sm cursor-pointer hover:bg-gray-100 hover:text-black transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <LineChart className="text-purple-500" />
-              <h3 className="text-lg font-semibold">Track Your Progress</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Visualize your learning journey with detailed analytics
-            </p>
-          </div>
-        </Link>
+      {/* Testimonials */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">What our users say</h2>
+          <p className="text-sm text-muted-foreground">
+            Trusted by students and engineers preparing for top companies.
+          </p>
         </div>
-
-      <div className="m-0 ">
-        <h2 className="text-xl font-semibold mb-4 align-start">
-          What Our Users Say
-        </h2>
-        <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden">
+        <div className="relative flex flex-col overflow-hidden">
           <Marquee pauseOnHover className="[--duration:20s]">
             {firstRow.map((review) => (
               <ReviewCard key={review.username} {...review} />
@@ -730,224 +760,272 @@ export default function Home() {
               <ReviewCard key={review.username} {...review} />
             ))}
           </Marquee>
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/6 bg-gradient-to-r from-background" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-1/6 bg-gradient-to-l from-background" />
         </div>
-      </div>
+      </section>
 
-      {/* FAQ Section with Categories */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
-        <div className="flex flex-wrap gap-4 mb-4">
-          {/* FAQ Categories */}
-          {faqCategories.map((cat, idx) => (
-            <button
+      {/* FAQ */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Frequently asked questions
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Can&apos;t find what you&apos;re looking for? Reach out via the contact link below.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {faqCategories.map((cat) => (
+            <Button
               key={cat}
-              className={`px-4 py-2 rounded-full text-sm font-medium border transition ${selectedCategory === cat ? 'bg-slate-700 text-white border-blue-400' : 'bg-slate-900 text-white-800 border-blue-400 hover:bg-blue-700'}`}
+              size="sm"
+              variant={selectedCategory === cat ? "default" : "outline"}
+              className="rounded-full"
               onClick={() => setSelectedCategory(cat)}
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
-        <div className="space-y-4">
-          {faqs
-            .filter(faq => selectedCategory === 'All' || faq.category === selectedCategory)
-            .map((faq, idx) => (
-              <div key={idx}>
-                <h4 className="font-medium">{faq.question}</h4>
-                <p className="text-sm text-muted-foreground">{faq.answer}</p>
-              </div>
-            ))}
-        </div>
-      </div>
+        <Card>
+          <CardContent className="divide-y p-0">
+            {faqs
+              .filter(
+                (faq) => selectedCategory === "All" || faq.category === selectedCategory
+              )
+              .map((faq) => (
+                <div key={faq.question} className="space-y-1 p-5">
+                  <h4 className="font-medium">{faq.question}</h4>
+                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Mascot: AlgoBuddy Chat Button */}
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setShowCoach(!showCoach)}
-          className="transition hover:scale-105"
+          className={cn(
+            "group relative flex size-14 items-center justify-center rounded-full",
+            "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/20",
+            "transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-primary/30",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          )}
           aria-label="Toggle AlgoBuddy chat"
         >
-          <Image
-            src="/algobuddy.jpg"
-            alt="AlgoBuddy Mascot"
-            width={64}
-            height={64}
-            className="rounded-full shadow-md border border-primary"
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-primary/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-safe:animate-ping"
           />
+          {showCoach ? (
+            <X className="relative size-6" />
+          ) : (
+            <MessageCircle className="relative size-6" />
+          )}
+          <span className="sr-only">Chat with AlgoBuddy</span>
         </button>
       </div>
 
       {/* Chat Popup */}
       {showCoach && (
-        <div className="fixed bottom-24 right-4 w-80 bg-card border border-primary shadow-lg rounded-lg flex flex-col z-50">
-          <div className="bg-primary text-primary-foreground text-sm px-4 py-2 rounded-t-lg flex justify-between items-center">
-            <span>🤖 AlgoBuddy</span>
-            <button
+        <div className="fixed bottom-24 right-6 z-50 flex w-80 flex-col overflow-hidden rounded-xl border bg-card shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-300 sm:w-96">
+          <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+                <Bot className="size-4" />
+              </div>
+              <span className="text-sm font-semibold">AlgoBuddy</span>
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                Online
+              </Badge>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-7"
               onClick={() => setShowCoach(false)}
-              className="text-white text-xs"
+              aria-label="Close chat"
             >
-              ✕
-            </button>
+              <X className="size-4" />
+            </Button>
           </div>
-          {/* Common topics as clickable chips with explanations on hover and pseudocode on click */}
-          <div className="flex flex-wrap gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
+          <div className="flex flex-wrap gap-1.5 border-b bg-muted/30 px-3 py-2">
             {commonTopics.map((topic) => (
               <button
                 key={topic.label}
-                className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition relative group"
+                title={topic.explanation}
+                className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                 onClick={() => {
                   setChatHistory((prev) => [
                     ...prev,
                     { role: "user" as const, content: topic.label },
-                    { role: "bot" as const, content: { type: 'code', code: topic.pseudocode, label: topic.label } },
+                    {
+                      role: "bot" as const,
+                      content: {
+                        type: "code",
+                        code: topic.pseudocode,
+                        label: topic.label,
+                      },
+                    },
                   ]);
                   setUserInput("");
                 }}
               >
                 {topic.label}
-                <span className="hidden group-hover:block absolute left-0 top-8 z-10 w-56 bg-card border border-primary/20 text-xs text-primary rounded p-2 shadow-lg">
-                  {topic.explanation}
-                </span>
               </button>
             ))}
           </div>
-          <div className="p-4 h-60 overflow-y-auto text-sm space-y-2">
+          <div className="h-64 space-y-2 overflow-y-auto p-4 text-sm">
             {chatHistory.map((msg, index) => (
               <div
                 key={index}
                 className={msg.role === "user" ? "text-right" : "text-left"}
               >
-                {msg.role === "bot" && typeof msg.content === 'object' && msg.content.type === 'code' ? (
-                  <div className="bg-gray-900 text-green-200 rounded-lg p-2 mb-1 relative">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-semibold text-xs text-white">{msg.content.label} Pseudocode</span>
+                {msg.role === "bot" &&
+                typeof msg.content === "object" &&
+                msg.content.type === "code" ? (
+                  <div className="relative rounded-lg border bg-muted p-2">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-semibold">
+                        {msg.content.label} · Pseudocode
+                      </span>
                       <button
-                        className="relative group ml-2"
+                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
                         onClick={() => {
-                          if (typeof msg.content === 'object' && 'code' in msg.content) {
-                            navigator.clipboard.writeText(msg.content.code.replace(/\\n/g, '\n'));
+                          if (
+                            typeof msg.content === "object" &&
+                            "code" in msg.content
+                          ) {
+                            navigator.clipboard.writeText(
+                              msg.content.code.replace(/\\n/g, "\n")
+                            );
                             setCopiedIndex(index);
-                            setTimeout(() => setCopiedIndex((prev) => prev === index ? null : prev), 5000);
+                            setTimeout(
+                              () =>
+                                setCopiedIndex((prev) =>
+                                  prev === index ? null : prev
+                                ),
+                              2000
+                            );
                           }
                         }}
                         aria-label="Copy pseudocode"
                       >
-                        {/* Clipboard SVG icon */}
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="20"
-                          height="20"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          className="text-blue-300 hover:text-blue-500 transition"
-                        >
-                          <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
-                          <rect x="3" y="3" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/>
-                        </svg>
-                        {/* Tooltip on hover or after copy */}
-                        <span className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 pointer-events-none transition whitespace-nowrap shadow-lg z-20 opacity-0 group-hover:opacity-100 ${copiedIndex === index ? '!opacity-100' : ''}`}>
-                          {copiedIndex === index ? 'Copied' : 'Copy'}
-                        </span>
+                        {copiedIndex === index ? "Copied" : "Copy"}
                       </button>
                     </div>
                     <textarea
-                      className="w-full bg-gray-900 text-green-200 font-mono text-xs rounded p-1 border border-gray-700 resize-vertical"
-                      style={{ minHeight: 90 }}
-                      defaultValue={msg.content.code.replace(/\\n/g, '\n')}
+                      readOnly
+                      className="min-h-24 w-full resize-y rounded border bg-background p-2 font-mono text-xs"
+                      defaultValue={msg.content.code.replace(/\\n/g, "\n")}
                     />
                   </div>
                 ) : (
                   <div
-                    className={`inline-block px-3 py-2 rounded-lg ${
+                    className={cn(
+                      "inline-block max-w-[85%] rounded-lg px-3 py-2",
                       msg.role === "user"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    )}
                   >
-                    {typeof msg.content === 'string' ? msg.content : ''}
+                    {typeof msg.content === "string" ? msg.content : ""}
                   </div>
                 )}
               </div>
             ))}
           </div>
-          {/* Input area */}
-          <div className="p-2 border-t flex gap-2">
-            <input
-              type="text"
+          <div className="flex gap-2 border-t p-2">
+            <Input
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              className="flex-1 px-3 py-2 text-sm border rounded-md border-primary placeholder-grey-500 text-black dark:text-white"
               placeholder="Ask me something..."
+              className="flex-1"
             />
-            <button
-              onClick={handleSend}
-              className="bg-primary hover:bg-primary/80 text-primary-foreground text-sm px-3 py-1 rounded-md"
-            >
+            <Button onClick={handleSend} size="sm">
               Send
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {randomProblem && (
-        <div className="fixed top-24 right-4 z-50 max-w-md w-full">
-          <div className="relative rounded-2xl border-4 border-blue-400 bg-gradient-to-br from-blue-50 via-white to-blue-100 shadow-2xl p-6 overflow-hidden animate-fade-in">
-            {/* Decorative gradient ring */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-300/30 to-purple-400/20 rounded-full blur-2xl z-0" />
-            <div className="flex items-center gap-3 mb-2 z-10 relative">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-200 border-2 border-blue-400 text-2xl shadow">
-                🎲
-              </span>
-              <h2 className="text-xl font-bold text-blue-900 drop-shadow-sm">{randomProblem.title}</h2>
-            </div>
-            <div className="mb-2 text-xs flex gap-2 z-10 relative">
-              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 border border-blue-300 font-semibold uppercase tracking-wide">{randomProblem.difficulty}</span>
-              {randomProblem.related_topics && Array.isArray(randomProblem.related_topics)
-                ? randomProblem.related_topics.map((t: string) => (
-                    <span key={t} className="px-2 py-1 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">{t}</span>
-                  ))
-                : null}
-            </div>
-            <div className="mb-2 max-h-60 overflow-y-auto whitespace-pre-line text-sm text-gray-800 z-10 relative">
-              {/* Try to split description into paragraphs for readability */}
+        <div className="fixed right-4 top-20 z-50 w-full max-w-md">
+          <Card className="relative overflow-hidden shadow-2xl">
+            <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/10 blur-2xl" />
+            <CardHeader className="relative">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Dices className="size-5" />
+                  </div>
+                  <CardTitle className="text-lg leading-snug">
+                    {randomProblem.title}
+                  </CardTitle>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="-mr-2 -mt-2 size-8"
+                  onClick={() => setRandomProblem(null)}
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="secondary">{randomProblem.difficulty}</Badge>
+                {Array.isArray(randomProblem.related_topics) &&
+                  randomProblem.related_topics.slice(0, 3).map((t: string) => (
+                    <Badge key={t} variant="outline">
+                      {t}
+                    </Badge>
+                  ))}
+              </div>
+            </CardHeader>
+            <CardContent className="relative max-h-60 space-y-2 overflow-y-auto text-sm text-muted-foreground">
               {randomProblem.description
                 ? randomProblem.description
                     .split(/\n{2,}/)
                     .map((para: string, idx: number) => (
-                      <p key={idx} className="mb-2 leading-relaxed">{para.trim()}</p>
+                      <p key={idx} className="leading-relaxed">
+                        {para.trim()}
+                      </p>
                     ))
                 : "No description available."}
+            </CardContent>
+            <div className="relative flex items-center justify-end gap-2 border-t px-6 py-4">
+              <Button variant="ghost" onClick={() => setRandomProblem(null)}>
+                Dismiss
+              </Button>
+              <Button asChild>
+                <Link href={`/problems/${randomProblem.id}`}>
+                  Solve <ArrowRight className="size-4" />
+                </Link>
+              </Button>
             </div>
-            <div className="flex items-center justify-between mt-4 z-10 relative">
-              <a
-                href={`/problems/${randomProblem.id}`}
-                className="bg-blue-500 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-full shadow transition"
-              >
-                Go to Problem
-              </a>
-              <button
-                className="ml-4 text-xs text-gray-500 hover:text-gray-800 px-3 py-1 rounded-full border border-gray-300 bg-gray-100 transition"
-                onClick={() => setRandomProblem(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-transparent text-muted-foreground py-1">
-        <div className="max-w-screen-xl mx-auto text-center">
-          <p className="text-s">© 2025 AlgoAce. All rights reserved.</p>
-          <div className="flex justify-center gap-6 mt-4 text-xs">
-            <Link href="/footer/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
-            <Link href="/footer/terms-of-service" className="hover:text-primary">Terms of Service</Link>
-            <Link href="/footer/contact-us" className="hover:text-primary">Contact Us</Link>
-          </div>
+      <footer className="border-t pt-6 text-center text-muted-foreground">
+        <p className="text-sm">
+          © {new Date().getFullYear()} AlgoAce. All rights reserved.
+        </p>
+        <div className="mt-3 flex justify-center gap-6 text-xs">
+          <Link href="/footer/privacy-policy" className="transition-colors hover:text-foreground">
+            Privacy Policy
+          </Link>
+          <Link href="/footer/terms-of-service" className="transition-colors hover:text-foreground">
+            Terms of Service
+          </Link>
+          <Link href="/footer/contact-us" className="transition-colors hover:text-foreground">
+            Contact Us
+          </Link>
         </div>
       </footer>
     </div>
@@ -1005,32 +1083,62 @@ function MiniCalendar({ activityDates }: { activityDates: string[] }) {
 
   return (
     <div
-      onClick={e => e.stopPropagation()}
-      className="bg-white dark:bg-slate-900 border border-orange-300 dark:border-orange-700 rounded-xl shadow-lg p-4 min-w-[260px] animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
+      className="min-w-[260px] rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg"
     >
-      <div className="flex justify-between items-center text-xs mb-1 text-gray-500 dark:text-gray-300">
-        <button onClick={handlePrev} className="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 font-bold" type="button">&#8592; Prev</button>
-        <span>{monthName} {viewYear}</span>
-        <button onClick={handleNext} className="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 font-bold" type="button">Next &#8594;</button>
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <button
+          onClick={handlePrev}
+          type="button"
+          className="rounded px-2 py-1 font-medium hover:bg-accent"
+        >
+          ← Prev
+        </button>
+        <span className="font-medium">
+          {monthName} {viewYear}
+        </span>
+        <button
+          onClick={handleNext}
+          type="button"
+          className="rounded px-2 py-1 font-medium hover:bg-accent"
+        >
+          Next →
+        </button>
       </div>
-      <div className="text-center text-xs mb-1 text-orange-700 dark:text-orange-300 font-semibold">Visited: {visitedCount}d</div>
+      <div className="mb-2 text-center text-xs font-medium text-muted-foreground">
+        {visitedCount} day{visitedCount === 1 ? "" : "s"} active this month
+      </div>
       <div className="grid grid-cols-7 gap-1 text-xs">
-        {['S','M','T','W','T','F','S'].map((d, i) => (
-          <div key={d + i} className="text-center font-bold text-gray-400 dark:text-gray-500">{d}</div>
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+          <div key={d + i} className="text-center font-semibold text-muted-foreground">
+            {d}
+          </div>
         ))}
-        {Array(firstDay).fill(null).map((_, i) => <div key={"empty-" + i}></div>)}
-        {Array(daysInMonth).fill(null).map((_, i) => {
-          const dateStr = ymd(i + 1);
-          const visited = activityDates.includes(dateStr);
-          return (
-            <div
-              key={"day-" + (i + 1)}
-              className={`rounded-full w-7 h-7 flex items-center justify-center ${visited ? 'bg-orange-400 text-white font-bold shadow' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-200'} ${isToday(dateStr) ? 'ring-2 ring-orange-600 dark:ring-orange-400' : ''}`}
-            >
-              {i + 1}
-            </div>
-          );
-        })}
+        {Array(firstDay)
+          .fill(null)
+          .map((_, i) => (
+            <div key={"empty-" + i} />
+          ))}
+        {Array(daysInMonth)
+          .fill(null)
+          .map((_, i) => {
+            const dateStr = ymd(i + 1);
+            const visited = activityDates.includes(dateStr);
+            return (
+              <div
+                key={"day-" + (i + 1)}
+                className={cn(
+                  "flex size-7 items-center justify-center rounded-full",
+                  visited
+                    ? "bg-primary font-semibold text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
+                  isToday(dateStr) && "ring-2 ring-primary ring-offset-1 ring-offset-popover"
+                )}
+              >
+                {i + 1}
+              </div>
+            );
+          })}
       </div>
     </div>
   );
