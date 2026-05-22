@@ -1,4 +1,5 @@
 "use client"
+import { EmptyState } from "@/components/layout/empty-state";
 
 // PieChart component for acceptance rate
 function PieChart({ acceptanceRate, size = 96 }: { acceptanceRate: number, size?: number }) {
@@ -46,6 +47,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Toaster, toast } from 'sonner'
 import { HelpModal } from "@/components/problems/help-modal"
+import { ExternalLink, FileText, Code2, MessageSquare, Sparkles, Lightbulb, ArrowRight } from 'lucide-react'
 
 interface RawProblemData {
   id: number
@@ -273,6 +275,19 @@ export default function ProblemDetailPage({ params }: PageProps) {
         </p>
       )
     })
+  }
+
+  function getDifficultyBadgeClass(difficulty: string): string | undefined {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+      case 'medium':
+        return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+      case 'hard':
+        return 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400'
+      default:
+        return undefined
+    }
   }
 
   return (
