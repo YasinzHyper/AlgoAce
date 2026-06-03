@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { API_BASE } from '@/lib/api'
 import { supabase } from '@/utils/supabase/client'
 import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant, Handle, Position } from '@xyflow/react'
 import { useTheme } from 'next-themes'
@@ -100,7 +101,7 @@ const RoadmapDetailPage = () => {
         if (!sessionData.session) throw new Error('Not authenticated')
         const token = sessionData.session.access_token
 
-        const response = await fetch(`http://localhost:8000/api/roadmap/${id}`, {
+        const response = await fetch(`${API_BASE}/api/roadmap/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

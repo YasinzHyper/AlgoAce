@@ -103,7 +103,7 @@ export default function ProfilePage() {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           videoRef.current.srcObject = stream;
-        } catch (err) {
+        } catch {
           alert('Unable to access camera.');
           setShowPhotoModal(false);
         }

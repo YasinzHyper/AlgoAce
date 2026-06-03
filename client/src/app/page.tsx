@@ -120,6 +120,7 @@ export default function Home() {
     },
   ]);
   const [userInput, setUserInput] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [randomProblem, setRandomProblem] = useState<any | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null); // For copy-to-clipboard feedback
   // Utility to get today in YYYY-MM-DD
@@ -163,8 +164,8 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const today = getToday();
-    let data = localStorage.getItem('algoace-activity-dates');
-    let dates: string[] = data ? JSON.parse(data) : [];
+    const data = localStorage.getItem('algoace-activity-dates');
+    const dates: string[] = data ? JSON.parse(data) : [];
     if (!dates.includes(today)) {
       dates.push(today);
       localStorage.setItem('algoace-activity-dates', JSON.stringify(dates));
@@ -221,6 +222,7 @@ export default function Home() {
       const problems = await response.json();
       // Filter for easy problems
       const easyProblems = problems.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (p: any) =>
           (p.difficulty?.toLowerCase?.() === "easy") ||
           (p.difficulty === "Easy")
@@ -231,6 +233,7 @@ export default function Home() {
       // Pick a random easy problem
       const random = easyProblems[Math.floor(Math.random() * easyProblems.length)];
       setRandomProblem(random);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       alert(error.message || "Failed to fetch random problem");
     }
@@ -374,12 +377,13 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    let data = localStorage.getItem('algoace-activity-dates');
-    let dates: string[] = data ? JSON.parse(data) : [];
+    const data = localStorage.getItem('algoace-activity-dates');
+    const dates: string[] = data ? JSON.parse(data) : [];
     setActivityDates(dates);
   }, [showCalendar]);
 
   // --- SEARCH BAR LOGIC (SIMPLE, ERROR-FREE, ALL DATA SOURCES) ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [problems, setProblems] = useState<any[]>([]);
   useEffect(() => {
     fetch("/leetcode-problems-dataset.json")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { login } from "./actions";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 
-export default function LoginPage() {
+function LoginPageContent() {
   const searchParams = useSearchParams();
   const message = searchParams.get("message");
 
@@ -114,12 +114,20 @@ export default function LoginPage() {
 
         {/* Signup link */}
         <div className="text-center text-sm">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link className="underline" href="/signup">
             Sign up
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
   );
 }

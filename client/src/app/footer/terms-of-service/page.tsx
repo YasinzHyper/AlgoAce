@@ -24,7 +24,7 @@ export default function TermsOfService() {
       <h2 className="text-xl font-semibold mt-8 mb-2">4. Termination</h2>
       <p className="mb-4">We reserve the right to suspend or terminate your access to AlgoAce at our discretion, especially in cases of misuse or violation of these terms.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">5. Disclaimer</h2>
-      <p className="mb-4">AlgoAce is provided "as is" without warranties of any kind. We do not guarantee the accuracy or completeness of content.</p>
+      <p className="mb-4">AlgoAce is provided &quot;as is&quot; without warranties of any kind. We do not guarantee the accuracy or completeness of content.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">6. Limitation of Liability</h2>
       <p className="mb-4">We are not liable for any damages arising from your use of AlgoAce.</p>
       <h2 className="text-xl font-semibold mt-8 mb-2">7. Changes to Terms</h2>

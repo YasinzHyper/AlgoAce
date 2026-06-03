@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { CheckIcon, ChevronRightIcon, CircleIcon, Circle } from "lucide-react"
+import { CheckIcon, ChevronRightIcon, Circle } from "lucide-react"
 
 import { cn } from "@/utils/supabase/utils"
 

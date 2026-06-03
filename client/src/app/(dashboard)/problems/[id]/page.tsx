@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { use } from 'react'
+import { API_BASE } from '@/lib/api'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,7 +67,7 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-export default function ProblemDetailPage({ params }: PageProps) {
+function ProblemDetailPageContent({ params }: PageProps) {
   const resolvedParams = use(params)
   const searchParams = useSearchParams()
   const taskIdParam = searchParams.get('task')
@@ -88,7 +89,7 @@ export default function ProblemDetailPage({ params }: PageProps) {
         const { data: sessionData } = await supabase.auth.getSession()
         if (!sessionData.session) return
         const token = sessionData.session.access_token
-        const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}`, {
+        const res = await fetch(`${API_BASE}/api/progress/task/${taskId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!res.ok) return
@@ -111,7 +112,7 @@ export default function ProblemDetailPage({ params }: PageProps) {
       const { data: sessionData } = await supabase.auth.getSession()
       if (!sessionData.session) throw new Error('Not authenticated')
       const token = sessionData.session.access_token
-      const res = await fetch(`http://localhost:8000/api/progress/task/${taskId}/complete`, {
+      const res = await fetch(`${API_BASE}/api/progress/task/${taskId}/complete`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -187,7 +188,7 @@ export default function ProblemDetailPage({ params }: PageProps) {
     try {
       // Ensure problem.id is a string for the URL
       const problemId = String(problem.id)
-      const url = `http://localhost:8000/api/problems/explain?problem_id=${encodeURIComponent(problemId)}`
+      const url = `${API_BASE}/api/problems/explain?problem_id=${encodeURIComponent(problemId)}`
       console.log("Making request to:", url)
       const response = await fetch(url, {
         method: 'GET',
@@ -630,6 +631,14 @@ export default function ProblemDetailPage({ params }: PageProps) {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function ProblemDetailPage({ params }: PageProps) {
+  return (
+    <Suspense>
+      <ProblemDetailPageContent params={params} />
+    </Suspense>
   )
 }
 

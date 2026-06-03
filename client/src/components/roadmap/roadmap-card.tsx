@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 interface RoadmapCardProps {
   goal: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   current_knowledge: any // Accept JSON/object
   weekly_hours: number
   weeks: number

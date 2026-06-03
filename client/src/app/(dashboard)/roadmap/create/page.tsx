@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
+import { API_BASE } from "@/lib/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { supabase } from "@/utils/supabase/client"
@@ -96,7 +97,7 @@ export default function CreateRoadmapPage() {
         weeks: data.weeks,
       }
 
-      const response = await fetch("http://localhost:8000/api/roadmap/generate", {
+      const response = await fetch(`${API_BASE}/api/roadmap/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,7 +111,7 @@ export default function CreateRoadmapPage() {
         throw new Error(`Failed to generate roadmap: ${errorText}`)
       }
 
-      const result = await response.json()
+      await response.json()
       // const roadmapId = result.roadmap.id
       // router.push(`/roadmap/${roadmapId}`)
       toast.success("Roadmap generated successfully!")
@@ -118,6 +119,7 @@ export default function CreateRoadmapPage() {
         router.push('/roadmap')
       }, 2000) // 1 second delay
       router.push('/roadmap')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast.error("Error",{
         description: error.message,

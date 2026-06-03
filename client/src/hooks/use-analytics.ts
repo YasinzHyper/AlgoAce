@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/utils/supabase/client"
+import { API_BASE } from "@/lib/api"
 
 export interface AnalyticsTotals {
   problems_solved: number
@@ -73,7 +74,7 @@ export function useAnalytics(): UseAnalyticsResult {
       if (!sessionData.session) throw new Error("Not authenticated")
       const token = sessionData.session.access_token
 
-      const res = await fetch("http://localhost:8000/api/analytics/summary", {
+      const res = await fetch(`${API_BASE}/api/analytics/summary`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { API_BASE } from '@/lib/api'
 import { supabase } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -81,6 +82,7 @@ const PACE_BADGE: Record<PaceStatus, { label: string; className: string }> = {
 }
 
 const RoadmapDashboard = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [roadmaps, setRoadmaps] = useState<any[]>([])
   const [overview, setOverview] = useState<Record<number, RoadmapOverview>>({})
   const [loading, setLoading] = useState(true)
@@ -117,7 +119,7 @@ const RoadmapDashboard = () => {
           throw new Error('Not authenticated')
         }
         const token = sessionData.session.access_token
-        const response = await fetch('http://localhost:8000/api/roadmap', {
+        const response = await fetch(`${API_BASE}/api/roadmap`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -132,7 +134,7 @@ const RoadmapDashboard = () => {
         // Fetch per-roadmap completion in one shot so each card can render a
         // progress bar inline. Non-blocking: failure here doesn't hide cards.
         try {
-          const ovRes = await fetch('http://localhost:8000/api/analytics/roadmaps', {
+          const ovRes = await fetch(`${API_BASE}/api/analytics/roadmaps`, {
             headers: { Authorization: `Bearer ${token}` },
           })
           if (ovRes.ok) {
@@ -142,6 +144,7 @@ const RoadmapDashboard = () => {
         } catch (e) {
           console.warn('Roadmap overview fetch failed', e)
         }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -158,7 +161,7 @@ const RoadmapDashboard = () => {
         throw new Error("You must be logged in to delete the roadmap")
       }
       const token = sessionData.session.access_token
-      const response = await fetch(`http://localhost:8000/api/roadmap/${id}`, {
+      const response = await fetch(`${API_BASE}/api/roadmap/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -171,6 +174,7 @@ const RoadmapDashboard = () => {
       toast.success("Success", {
         description: 'Roadmap deleted successfully',
       })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error("Error", {
         description: err.message,
@@ -273,6 +277,7 @@ const RoadmapCard = ({
   overview,
   onDelete,
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   roadmap: any
   overview?: RoadmapOverview
   onDelete: (id: number) => void

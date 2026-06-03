@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from 'react'
 import { signup } from "./actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
-export default function SignUpPage() {
+function SignUpPageContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
@@ -59,4 +60,12 @@ export default function SignUpPage() {
       </div>
     </div>
   )
-} 
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpPageContent />
+    </Suspense>
+  )
+}

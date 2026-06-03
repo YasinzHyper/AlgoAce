@@ -20,7 +20,7 @@ export interface DashboardPayload {
   next_task: DashboardNextTask | null
 }
 
-const API_BASE = "http://localhost:8000"
+import { API_BASE } from "@/lib/api"
 
 /**
  * Single-shot fetch for the `/dashboard` page (analytics summary + active
