@@ -21,7 +21,7 @@ interface LeaderboardResponse {
   me: LeaderboardEntry | null
 }
 
-const API_BASE = "http://localhost:8000"
+import { API_BASE } from "@/lib/api"
 
 /**
  * Fetches the points-based leaderboard for the given period. The caller's own

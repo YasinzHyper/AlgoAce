@@ -102,7 +102,7 @@ export interface LiveTokenResponse {
   expires_in_seconds: number
 }
 
-const API_BASE = "http://localhost:8000"
+import { API_BASE } from "@/lib/api"
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession()

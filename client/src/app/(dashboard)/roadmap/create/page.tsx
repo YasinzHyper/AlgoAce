@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
+import { API_BASE } from "@/lib/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { supabase } from "@/utils/supabase/client"
@@ -119,7 +120,7 @@ export default function CreateRoadmapPage() {
         weeks: data.weeks,
       }
 
-      const response = await fetch("http://localhost:8000/api/roadmap/generate", {
+      const response = await fetch(`${API_BASE}/api/roadmap/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
