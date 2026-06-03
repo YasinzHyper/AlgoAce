@@ -132,7 +132,7 @@ npm run dev
 ```
 App runs on `http://localhost:3000`. Full instructions: [`client/README.md`](client/README.md).
 
-> The client currently talks to the API at a hard-coded `http://localhost:8000`. Run both locally on the default ports.
+> The client resolves the API base URL from the `NEXT_PUBLIC_API_URL` environment variable (falls back to `http://localhost:8000` for local dev). Run both services locally on the default ports or set the variable to point at a deployed backend.
 
 ---
 
@@ -156,7 +156,6 @@ App runs on `http://localhost:3000`. Full instructions: [`client/README.md`](cli
 - **Server WS relay** — fallback transport if Gemini ephemeral tokens move out of `v1alpha`.
 - **Social & gamification** — friend lists, team challenges, badges, daily shared challenge with its own leaderboard tab, head-to-head mode.
 - **Leaderboard weighting** — optionally fold interview scores into the points formula.
-- **Repo-wide lint cleanup** — clear long-standing `no-explicit-any` / `no-unescaped-entities` errors so `next build` passes cleanly.
 
 See [`plans/`](plans/) for detailed implementation specs of in-flight features.
 

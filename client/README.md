@@ -39,9 +39,8 @@ npm install
 NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon_key>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000   # used for auth email redirects
+NEXT_PUBLIC_API_URL=http://localhost:8000    # omit to use the default; set to your deployed backend URL in production
 ```
-
-> The backend base URL is currently hard-coded to `http://localhost:8000` inside `src/hooks/*`. Make sure the API is running there.
 
 3. Run the development server:
 ```bash
@@ -105,7 +104,7 @@ client/src/
 1. `utils/supabase/{client,server,middleware}.ts` create the appropriate Supabase client for browser / RSC / middleware contexts. `middleware.ts` refreshes the session cookie and redirects unauthenticated users away from `(dashboard)` routes.
 2. Pages don't `fetch` directly — they call a hook from `src/hooks/`. Each hook:
    - reads the Supabase session, attaches `Authorization: Bearer <access_token>`,
-   - calls `http://localhost:8000/api/...`,
+   - calls `${NEXT_PUBLIC_API_URL}/api/...` (defaults to `http://localhost:8000`),
    - exposes `{ data, loading, error, refresh, …actions }` with optimistic updates where it makes sense (e.g. marking a challenge problem solved).
 3. The **voice interview** is the one place the browser talks to Google directly: `use-interview.ts` asks the backend for a single-use ephemeral Gemini Live token, then `use-live-interview.ts` opens the WebSocket via `@google/genai`, streams 16 kHz PCM mic audio up, plays 24 kHz PCM responses back, and POSTs every finalised transcript turn to `/api/interviews/{id}/event` so the DB stays authoritative across reconnects.
 
@@ -122,8 +121,6 @@ client/src/
 - `npm run build` — production build
 - `npm run start` — serve production build
 - `npm run lint` — ESLint
-
-> **Known issue:** `next build` currently fails on pre-existing lint errors in a handful of legacy files (`app/page.tsx`, `app/footer/*`, `app/login/*`, `roadmap-card.tsx`, …). `tsc --noEmit` is clean. Tracked in the root README's roadmap section.
 
 ## Stack
 
