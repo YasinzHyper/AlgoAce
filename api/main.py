@@ -14,7 +14,7 @@ from routers import (
     interview_router,
 )
 
-app = FastAPI()
+app = FastAPI(redirect_slashes=False)
 
 _origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
