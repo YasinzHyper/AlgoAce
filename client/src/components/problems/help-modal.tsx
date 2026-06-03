@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { API_BASE } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ export function HelpModal({ problemId, problemTitle }: HelpModalProps) {
     setIsLoading(true);
     try {
       // Call the explanation agent API
-      const response = await fetch('http://localhost:8000/api/problems/explanation', {
+      const response = await fetch(`${API_BASE}/api/problems/explanation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/utils/supabase/client'
+import { API_BASE } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -111,7 +112,7 @@ export default function ProblemsPage() {
         if (!sessionData.session) throw new Error('Not authenticated')
         const token = sessionData.session.access_token
 
-        const response = await fetch('http://localhost:8000/api/roadmap', {
+        const response = await fetch(`${API_BASE}/api/roadmap`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!response.ok) throw new Error('Failed to fetch roadmaps')
@@ -184,7 +185,7 @@ export default function ProblemsPage() {
         if (!sessionData.session) throw new Error('Not authenticated')
         const token = sessionData.session.access_token
 
-        const response = await fetch(`http://localhost:8000/api/problems/${selectedRoadmap.id}`, {
+        const response = await fetch(`${API_BASE}/api/problems/${selectedRoadmap.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!response.ok) throw new Error('Failed to fetch tasks')
@@ -212,7 +213,7 @@ export default function ProblemsPage() {
         const token = sessionData.session.access_token
 
         const response = await fetch(
-          `http://localhost:8000/api/progress/roadmap/${selectedRoadmap.id}`,
+          `${API_BASE}/api/progress/roadmap/${selectedRoadmap.id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (!response.ok) throw new Error('Failed to fetch progress')
@@ -283,7 +284,7 @@ export default function ProblemsPage() {
       const token = sessionData.session.access_token
 
       const response = await fetch(
-        `http://localhost:8000/api/progress/task/${taskId}/feedback`,
+        `${API_BASE}/api/progress/task/${taskId}/feedback`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -340,7 +341,7 @@ export default function ProblemsPage() {
       const token = sessionData.session.access_token
 
       const response = await fetch(
-        `http://localhost:8000/api/progress/task/${taskId}/complete`,
+        `${API_BASE}/api/progress/task/${taskId}/complete`,
         {
           method: 'PUT',
           headers: {
@@ -381,6 +382,151 @@ export default function ProblemsPage() {
       setPendingProblemId(null)
     }
   }
+
+  const handleToggleOsComplete = async (
+    taskId: number,
+    itemId: number,
+    checked: boolean
+  ) => {
+    setPendingOsItemId(itemId)
+    setProgressByTask((prev) => {
+      const entry = prev[taskId]
+      if (!entry) return prev
+      const osItems = { ...(entry.completed.os_items ?? {}), [String(itemId)]: checked }
+      return {
+        ...prev,
+        [taskId]: {
+          ...entry,
+          completed: { ...entry.completed, os_items: osItems },
+        },
+      }
+    })
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+
+      const response = await fetch(
+        `${API_BASE}/api/progress/task/${taskId}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'os_item',
+            id: String(itemId),
+            completed: checked,
+          }),
+        }
+      )
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      const { progress } = await response.json()
+      setProgressByTask((prev) => ({ ...prev, [taskId]: progress }))
+      toast.success(checked ? 'OS item completed' : 'Marked incomplete')
+    } catch (error) {
+      setProgressByTask((prev) => {
+        const entry = prev[taskId]
+        if (!entry) return prev
+        const osItems = {
+          ...(entry.completed.os_items ?? {}),
+          [String(itemId)]: !checked,
+        }
+        return {
+          ...prev,
+          [taskId]: {
+            ...entry,
+            completed: { ...entry.completed, os_items: osItems },
+          },
+        }
+      })
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setPendingOsItemId(null)
+    }
+  }
+
+  const handleToggleDbmsComplete = async (
+    taskId: number,
+    itemId: number,
+    checked: boolean
+  ) => {
+    setPendingDbmsItemId(itemId)
+    setProgressByTask((prev) => {
+      const entry = prev[taskId]
+      if (!entry) return prev
+      const dbmsItems = { ...(entry.completed.dbms_items ?? {}), [String(itemId)]: checked }
+      return {
+        ...prev,
+        [taskId]: {
+          ...entry,
+          completed: { ...entry.completed, dbms_items: dbmsItems },
+        },
+      }
+    })
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session) throw new Error('Not authenticated')
+      const token = sessionData.session.access_token
+
+      const response = await fetch(
+        `${API_BASE}/api/progress/task/${taskId}/complete`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'dbms_item',
+            id: String(itemId),
+            completed: checked,
+          }),
+        }
+      )
+      if (!response.ok) {
+        const body = await response.text()
+        throw new Error(body || 'Failed to update progress')
+      }
+      const { progress } = await response.json()
+      setProgressByTask((prev) => ({ ...prev, [taskId]: progress }))
+      toast.success(checked ? 'DBMS item completed' : 'Marked incomplete')
+    } catch (error) {
+      setProgressByTask((prev) => {
+        const entry = prev[taskId]
+        if (!entry) return prev
+        const dbmsItems = {
+          ...(entry.completed.dbms_items ?? {}),
+          [String(itemId)]: !checked,
+        }
+        return {
+          ...prev,
+          [taskId]: {
+            ...entry,
+            completed: { ...entry.completed, dbms_items: dbmsItems },
+          },
+        }
+      })
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      toast.error('Error updating progress', { description: errorMessage })
+    } finally {
+      setPendingDbmsItemId(null)
+    }
+  }
+
+  const subjectFocus = selectedRoadmap?.user_input?.subjects ?? 'dsa_os'
+  const showDsa = ['dsa', 'dsa_os', 'dsa_dbms', 'all'].includes(subjectFocus)
+  const showOs = ['os', 'dsa_os', 'os_dbms', 'all'].includes(subjectFocus)
+  const showDbms = ['dbms', 'dsa_dbms', 'os_dbms', 'all'].includes(subjectFocus)
 
   // Update current week's problems when tasks or week changes
   useEffect(() => {

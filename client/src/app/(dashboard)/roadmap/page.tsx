@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { API_BASE } from '@/lib/api'
 import { supabase } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -117,7 +118,7 @@ const RoadmapDashboard = () => {
           throw new Error('Not authenticated')
         }
         const token = sessionData.session.access_token
-        const response = await fetch('http://localhost:8000/api/roadmap', {
+        const response = await fetch(`${API_BASE}/api/roadmap`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -132,7 +133,7 @@ const RoadmapDashboard = () => {
         // Fetch per-roadmap completion in one shot so each card can render a
         // progress bar inline. Non-blocking: failure here doesn't hide cards.
         try {
-          const ovRes = await fetch('http://localhost:8000/api/analytics/roadmaps', {
+          const ovRes = await fetch(`${API_BASE}/api/analytics/roadmaps`, {
             headers: { Authorization: `Bearer ${token}` },
           })
           if (ovRes.ok) {
@@ -158,7 +159,7 @@ const RoadmapDashboard = () => {
         throw new Error("You must be logged in to delete the roadmap")
       }
       const token = sessionData.session.access_token
-      const response = await fetch(`http://localhost:8000/api/roadmap/${id}`, {
+      const response = await fetch(`${API_BASE}/api/roadmap/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
