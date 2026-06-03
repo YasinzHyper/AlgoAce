@@ -30,8 +30,8 @@ function LoginPageContent() {
     }
 
     setIsSubmitting(true);
-    const form = e.currentTarget;
-    form.submit(); // Let the server action take over
+    const formData = new FormData(e.currentTarget);
+    await login(formData);
   };
 
   return (

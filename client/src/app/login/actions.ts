@@ -15,24 +15,15 @@ export async function login(formData: FormData) {
     password: formData.get('password') as string,
   }
 
-  try {
-    const { error } = await supabase.auth.signInWithPassword(userInput)
+  const { error } = await supabase.auth.signInWithPassword(userInput)
 
-    if (error) {
-      redirect('/error')
-      // return error;
-    }
-
-    // Revalidate all paths to ensure auth state is updated everywhere
-    revalidatePath('/', 'layout')
-    revalidatePath('/login', 'layout')
-    redirect('/')
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error
-    }
-    throw new Error('An unexpected error occurred during login') 
+  if (error) {
+    redirect('/error')
   }
+
+  revalidatePath('/', 'layout')
+  revalidatePath('/login', 'layout')
+  redirect('/')
 }
 
 export async function signup(formData: FormData) {
