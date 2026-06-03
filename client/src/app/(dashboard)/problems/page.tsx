@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { supabase } from '@/utils/supabase/client'
-import { API_BASE } from '@/lib/api'
+import { API_BASE } from '@/utils/api'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"

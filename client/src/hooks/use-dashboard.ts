@@ -20,7 +20,7 @@ export interface DashboardPayload {
   next_task: DashboardNextTask | null
 }
 
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 
 /**
  * Single-shot fetch for the `/dashboard` page (analytics summary + active

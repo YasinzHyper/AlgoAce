@@ -21,7 +21,7 @@ interface LeaderboardResponse {
   me: LeaderboardEntry | null
 }
 
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 
 /**
  * Fetches the points-based leaderboard for the given period. The caller's own

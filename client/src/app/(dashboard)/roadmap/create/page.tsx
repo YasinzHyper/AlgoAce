@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { supabase } from "@/utils/supabase/client"

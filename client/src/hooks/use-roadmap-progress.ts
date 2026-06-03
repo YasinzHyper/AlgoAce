@@ -76,7 +76,7 @@ interface UseRoadmapProgressResult {
   generateFeedback: () => Promise<void>
 }
 
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 /** Mirrors `ROADMAP_FEEDBACK_COOLDOWN_SECONDS` in `progress_router.py`. */
 const FEEDBACK_COOLDOWN_SECONDS = 5 * 60
 

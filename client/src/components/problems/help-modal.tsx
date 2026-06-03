@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { API_BASE } from '@/lib/api';
+import { API_BASE } from '@/utils/api';
 import {
   Dialog,
   DialogContent,

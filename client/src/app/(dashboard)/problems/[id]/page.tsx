@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { use } from 'react'
-import { API_BASE } from '@/lib/api'
+import { API_BASE } from '@/utils/api'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/utils/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

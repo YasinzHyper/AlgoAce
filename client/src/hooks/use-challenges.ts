@@ -73,7 +73,7 @@ export interface ChallengeStats {
   active_challenge: Challenge | null
 }
 
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 
 async function authedFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession()

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { supabase } from "@/utils/supabase/client"
-import { API_BASE } from "@/lib/api"
+import { API_BASE } from "@/utils/api"
 
 export interface AnalyticsTotals {
   problems_solved: number

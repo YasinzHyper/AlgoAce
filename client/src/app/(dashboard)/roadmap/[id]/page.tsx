@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { API_BASE } from '@/lib/api'
+import { API_BASE } from '@/utils/api'
 import { supabase } from '@/utils/supabase/client'
 import { ReactFlow, Background, Controls, Node, Edge, BackgroundVariant, Handle, Position } from '@xyflow/react'
 import { useTheme } from 'next-themes'
