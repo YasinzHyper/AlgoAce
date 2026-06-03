@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from pydantic import BaseModel
 from agents.crew import DSACrew
 from supabase_client import supabase
@@ -14,7 +15,8 @@ from routers import (
     interview_router,
 )
 
-app = FastAPI(redirect_slashes=False)
+app = FastAPI()
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 _origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
