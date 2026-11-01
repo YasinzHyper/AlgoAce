@@ -1,8 +1,12 @@
 # AlgoAce
 
-> **Your AI-powered interview prep coach** — personalised DSA roadmaps, curated LeetCode problem sets, timed challenges, voice-based mock interviews, and a feedback loop that actually learns from how you're doing.
+> **An adaptive, AI-powered interview prep platform** that builds a personalised DSA study plan around your goal, deadline and skill level, then coaches you through it with timed challenges and voice-based mock interviews.
 
-AlgoAce takes a user's goal (*"Google L4 in 8 weeks"*), current knowledge, and available time, then generates a week-by-week study roadmap, populates each week with company-tagged LeetCode problems, tracks every solve, and continuously coaches the user with AI-powered feedback that knows their pace, weak topics, and recent mock-interview scores.
+AlgoAce is an adaptive e-learning platform for technical interview preparation, built for candidates at every stage, from freshers preparing for their first SDE internship to experienced engineers targeting senior roles. You tell it your goal (*"Google L4 in 8 weeks"*), target company, deadline, weekly hours, and your current level in each topic. It then generates a week-by-week roadmap of DSA topics and CS fundamentals, filled with company-tagged LeetCode problems matched to your level.
+
+As you work through it, AlgoAce tracks every solve, works out your strong and weak topics and whether you're ahead or behind schedule, and adapts. AI coaching is based on what you actually solved or skipped. Timed challenges are built from your weak areas. A real-time voice mock interviewer (technical, behavioural or system design) knows your goal and progress, avoids problems you just solved, and grades you against a rubric afterward. The aim is to replace scattered, one-size-fits-all grinding with a focused plan that keeps adjusting to you.
+
+**Live demo:** [algoace-dev.vercel.app](https://algoace-dev.vercel.app)
 
 ---
 
@@ -188,4 +192,8 @@ New to the codebase? Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), 
 
 ## 📄 License
 
-MIT — see the LICENSE file for details.
+AlgoAce is licensed under the **GNU Affero General Public License v3.0** — see [`LICENSE`](LICENSE) for the full text.
+
+In short: you're free to use, study, modify and share the code, but if you distribute a modified version **or run it as a network service** (e.g. host it as a web app), you must make your complete source code available under the same license.
+
+**Third-party data:** the LeetCode problem dataset (`api/dataset/leetcode-problems.csv` and `client/public/leetcode-problems-dataset.json`) contains problem content owned by LeetCode. It is included for reference only and is **not** covered by the AGPL.
