@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: client
+    env:
+      # Placeholders: the build needs these to be set, but CI never talks to Supabase.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: api
+    env:
+      # Placeholders: importing the app needs these to be set, but CI never calls Supabase or Gemini.
+      SUPABASE_URL: http://127.0.0.1:54321
+      SUPABASE_KEY: ci-placeholder-key
+      GEMINI_API_KEY: ci-placeholder-key
+      GOOGLE_API_KEY: ci-placeholder-key
+      MODEL: gemini/gemini-2.5-flash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements*.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then python -m pip install -r requirements-dev.txt; fi
+      - name: Import the app
+        run: python -c "import main"
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then
+            python -m pytest -q
+          else
+            echo "api/tests does not exist yet; skipping pytest."
+          fi
