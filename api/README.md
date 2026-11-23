@@ -61,6 +61,17 @@ uvicorn main:app --reload
 
 The API will be available at `http://localhost:8000`
 
+## Running the tests
+
+The tests replace the Supabase and Gemini clients with in-memory fakes (`tests/fakes.py`), so they need no `.env`, no real keys and no network. Run them from `api/`, because the routers load the dataset from a path relative to the working directory:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -q
+```
+
+`tests/conftest.py` sets placeholder settings before the app is imported, swaps every client for a fake before each test, and makes any connection to an address other than this machine fail. Fixtures for new tests: `client` (a FastAPI `TestClient`), `supabase_fake` (seed rows with `seed()`, read them back with `rows()`), `gemini_fake` (queue model replies in `models.responses`) and `auth_header(user_id)` (an `Authorization` header the fake auth accepts). CI runs the same command on every pull request.
+
 ---
 
 ## Note: Prerequisites for Linux / WSL
@@ -134,9 +145,13 @@ api/
 │                                #   Loaded into pandas at import time by the
 │                                #   problem/analytics/challenge/interview routers
 │
+├── tests/                   # pytest suite; fake Supabase + Gemini clients
+│                            #   in tests/fakes.py, wiring in conftest.py
+│
 ├── db/                      # Local ChromaDB store (CrewAI CSVSearchTool)
 ├── schema.md                # Canonical SQL schema + every migration applied
-└── requirements.txt
+├── requirements.txt
+└── requirements-dev.txt     # Test dependencies (pytest, httpx)
 ```
 
 ## How a request works
