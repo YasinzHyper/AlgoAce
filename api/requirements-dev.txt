@@ -1,0 +1,4 @@
+# Test dependencies, installed together with requirements.txt:
+#   pip install -r requirements.txt -r requirements-dev.txt
+pytest>=9.2,<10
+httpx>=0.28
