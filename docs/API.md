@@ -93,6 +93,15 @@ The interactive Swagger UI at `/docs` is generated from the FastAPI app and is a
 
 ---
 
+## Health — `routers/health_router.py`
+
+| Method & Path | Purpose |
+|---|---|
+| `GET /health` | **No auth.** `200 {"status": "ok"}` once the app has started and every router has loaded the LeetCode dataset, otherwise `503 {"status": "error", "reason": "problem dataset not loaded"}`. Makes no database call. |
+| `GET /health/db` | **No auth.** Reads at most one `roadmaps.id` through the shared Supabase client and does not return it: `200 {"status": "ok"}`, or `503 {"status": "error", "reason": "database read failed"}` when the read fails. |
+
+---
+
 ## Error model
 
 - `401` — missing/invalid `Authorization` header or token rejected by Supabase.
