@@ -13,6 +13,7 @@ from routers import (
     analytics_router,
     challenge_router,
     interview_router,
+    health_router,
 )
 
 app = FastAPI()
@@ -35,6 +36,7 @@ app.include_router(progress_router.router, prefix="/api/progress")
 app.include_router(analytics_router.router, prefix="/api/analytics")
 app.include_router(challenge_router.router, prefix="/api/challenges")
 app.include_router(interview_router.router, prefix="/api/interviews")
+app.include_router(health_router.router)
 
 # dsa_crew = DSACrew()
 
