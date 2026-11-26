@@ -13,7 +13,10 @@ from the migrations on the base commit, so nothing passes before the baseline,
 <version>_baseline.sql, which is exempt: it builds the production schema for local
 and CI databases and is never applied to production. Where PostgreSQL could read the
 SQL differently from this script, the file fails: a character outside ASCII that is
-not in a string, quoted name or comment, or two string constants in a row.
+not in a string, quoted name or comment; two string constants in a row; a name or
+string written U&"..." or U&'...'; a backslash in a string not written E'...', which
+PostgreSQL reads by the setting standard_conforming_strings; and a number directly
+followed by a letter, _ or $.
 
 Usage, from the repository root: python scripts/lint_migrations.py [<base commit>]
 """
@@ -34,7 +37,8 @@ BASELINE_FILE = re.compile(r"supabase/migrations/\d+_baseline\.sql")
 # As in PostgreSQL's scanner (src/backend/parser/scan.l): whitespace is space, tab,
 # newline, carriage return and form feed, and a line comment ends at either line break.
 # PostgreSQL takes every byte from 0x80 up as part of a name or a dollar-quote tag, so
-# such a character outside a string, quoted name or comment is refused (other).
+# such a character outside a string, quoted name or comment is refused (other). U& starts
+# one token with the quote after it (xuistart, xusstart), so it is refused (unicode).
 _TOKEN = re.compile(
     r"(?P<space>[ \t\n\r\f]+)"
     r"|(?P<comment>--[^\n\r]*)"
@@ -43,11 +47,14 @@ _TOKEN = re.compile(
     r'|(?P<name>"(?:[^"]|"")*")'
     r"|(?P<unclosed>[eE]?'|\")"
     r"|(?P<dollar>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)"
+    r"|(?P<unicode>[uU]&['\"])"
     r"|(?P<word>[A-Za-z_][A-Za-z0-9_$]*)"
+    r"|(?P<number>(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?)"
     r"|(?P<other>[^\x20-\x7e\t\n\r\f])"
-    r"|(?P<punct>\$[0-9]+|[0-9]+|.)",
+    r"|(?P<punct>\$[0-9]+|.)",
     re.DOTALL,
 )
+_AFTER_NUMBER = re.compile(r"[A-Za-z_$]")
 _LINE_BREAK = re.compile(r"\r\n?|\n")
 _BLOCK_EDGE = re.compile(r"/\*|\*/")
 _NAMES = ("word", "name")
@@ -87,6 +94,14 @@ def split_statements(sql: str) -> list[Statement]:
         if kind == "other":
             where = "is outside a string, quoted name or comment, where PostgreSQL may read it differently"
             raise LintError(f"line {_line(sql, pos)}: U+{ord(text):04X} {where}")
+        if kind == "unicode":
+            raise LintError(f"line {_line(sql, pos)}: {text} starts a name or string with Unicode escapes; write it without U&")
+        if kind == "number":
+            # PostgreSQL 15 refuses a letter there, and later versions read 0x1F and 1_000 as one
+            # number, so 0x1$a$ is a number and a dollar quote where this script would see a name.
+            if _AFTER_NUMBER.match(sql, after):
+                raise LintError(f"line {_line(sql, pos)}: a number directly followed by a letter, _ or $")
+            kind = "punct"
         if kind == "block":
             depth = 1
             while depth:
@@ -108,6 +123,10 @@ def split_statements(sql: str) -> list[Statement]:
             # rules of the first, so after E'...' a \' does not close it. Refuse the join.
             if kind == "string" and tokens and tokens[-1].kind == "string":
                 raise LintError(f"line {_line(sql, pos)}: two string constants in a row; write them as one string")
+            # With standard_conforming_strings off, PostgreSQL reads '...' like E'...', where \' does
+            # not close the string. Without a backslash both read the same.
+            if kind == "string" and text[0] == "'" and "\\" in text:
+                raise LintError(f"line {_line(sql, pos)}: a backslash in a string not written E'...'")
             if kind == "word":
                 text = text.lower()
             elif kind == "name":
@@ -206,7 +225,11 @@ def check_statement(t: list, known: Objects, new: Objects) -> str | None:
     if _is(t, 0, "create", "index"):
         if not (_is(t, 2, "if", "not", "exists") and len(t) > 7 and t[5].kind in _NAMES and _is(t, 6, "on")):
             return "only CREATE INDEX IF NOT EXISTS <name> ON <table> is accepted"
-        return _outside(_name(t, _skip(t, 7, ("only",)))[0])
+        name, i = _name(t, _skip(t, 7, ("only",)))
+        if _outside(name):
+            return _outside(name)
+        # Anything else after the table name means the name was read only in part.
+        return None if _is(t, i, "using") or t[i:i + 1] == [OPEN] else "could not read the table name"
     if _is(t, 0, "create", "function") or _is(t, 0, "create", "or", "replace", "function"):
         name, i = _name(t, 2 if _is(t, 1, "function") else 4)
         if _outside(name) or t[i:i + 1] != [OPEN]:
@@ -226,8 +249,10 @@ def check_statement(t: list, known: Objects, new: Objects) -> str | None:
                 words = [word for _, word in top]
                 required = "primary" in words or ("not", "null") in itertools.pairwise(words)
                 # A default other than NULL fills the column (GENERATED BY DEFAULT has one), as does GENERATED ALWAYS.
+                # ON DELETE SET DEFAULT is a foreign-key action, not a default.
                 filled = any(
-                    (word == "default" and not _is(rest, j + 1, "null")) or _is(rest, j, "generated", "always")
+                    (word == "default" and not _is(rest, j + 1, "null") and not (j and _is(rest, j - 1, "set")))
+                    or _is(rest, j, "generated", "always")
                     for j, word in top
                 )
                 if required and not filled:
@@ -239,8 +264,11 @@ def check_statement(t: list, known: Objects, new: Objects) -> str | None:
                 return "ALTER TABLE accepts only ADD COLUMN IF NOT EXISTS, and ENABLE ROW LEVEL SECURITY on a new table"
         return None
     if _is(t, 0, "create", "policy"):
-        name = _name(t, 4)[0] if len(t) > 4 and t[2].kind in _NAMES and _is(t, 3, "on") else None
-        return None if name in new.relations else "CREATE POLICY is accepted only for a table created in the same file"
+        name, i = _name(t, 4) if len(t) > 4 and t[2].kind in _NAMES and _is(t, 3, "on") else (None, 0)
+        if name not in new.relations:
+            return "CREATE POLICY is accepted only for a table created in the same file"
+        clauses = ("as", "for", "to", "using", "with")
+        return None if i == len(t) or any(_is(t, i, word) for word in clauses) else "could not read the table name"
     if _is(t, 0, "grant"):
         # GRANT <privileges> ON [TABLE | FUNCTION] <names> TO <roles>; ON ALL TABLES IN SCHEMA and the like fail.
         top = [j for j, _ in _depth0(t)]
