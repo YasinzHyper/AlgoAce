@@ -44,9 +44,9 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these on every 
 ## Backend conventions (`api/`)
 
 - **One router per area.** Each module in `api/routers/` serves one area and is mounted in `api/main.py`, under `/api/<area>` for all but the health routes (`app.include_router(..., prefix="/api/<area>")`). A new endpoint goes in the router for its area; a new area gets its own router.
-- **Routes require a signed-in caller.** A route takes `user=Depends(get_current_user)`: the dependency checks the `Authorization: Bearer <token>` header with Supabase Auth and answers 401 when it is missing or invalid. Routers define their own copy of `get_current_user` for now; #30 tracks a single shared one.
+- **Routes require a signed-in caller.** A route takes `user=Depends(get_current_user)`: the dependency checks the `Authorization: Bearer <token>` header with Supabase Auth and answers 401 when the header is malformed or the token is invalid. A request with no `Authorization` header is answered 422 for now, because the header is declared required (`Header(...)`). Routers define their own copy of `get_current_user` for now; #30 tracks a single shared one, which also answers 401 for a missing header.
 - **An ownership filter on every query.** Every `select`, `update` and `delete` on a table that holds users' rows carries `.eq("user_id", user_id)`, with the id from `get_current_user`; every `insert` sets `user_id` from it, never from the request body. A route that looks a row up by id filters by the user as well and answers 404 when nothing comes back. The API reaches the database with a key that row-level security does not restrict, so these filters are what keep users' data apart.
-- **`HTTPException` passes through.** A handler that catches exceptions re-raises `HTTPException` before its generic `except`, so a 401, 404 or 422 does not become a 500:
+- **`HTTPException` passes through.** A handler that catches exceptions re-raises `HTTPException` before its generic `except`, so a 401, 404 or 422 does not become a 500 (#23 tracks the handlers that do not yet):
 
   ```python
   try:
