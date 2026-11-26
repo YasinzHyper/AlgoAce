@@ -186,6 +186,8 @@ See [`plans/`](plans/) for detailed implementation specs of in-flight features.
 5. Push — `git push origin feature/amazing-feature`
 6. Open a Pull Request
 
+[`CONTRIBUTING.md`](CONTRIBUTING.md) has the check commands, the backend and frontend conventions, how schema changes are recorded, and the branch, commit and pull request style.
+
 New to the codebase? Start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), then trace one feature end-to-end (e.g. **Challenges**: `client/src/hooks/use-challenges.ts` → `api/routers/challenge_router.py` → `public.challenges` in `api/schema.md`).
 
 ---
