@@ -72,3 +72,23 @@ jobs:
           else
             echo "api/tests does not exist yet; skipping pytest."
           fi
+
+  migrations:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The merge commit and its first parent, the tip of master, to compare it with.
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install test dependencies
+        run: python -m pip install -r api/requirements-dev.txt
+      - name: Test the migration linter
+        run: python -m pytest -q scripts/tests
+      - name: Lint the migrations this pull request adds
+        run: python scripts/lint_migrations.py HEAD^1
