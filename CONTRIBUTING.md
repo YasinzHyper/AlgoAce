@@ -27,7 +27,7 @@ It reads `client/.env.local`: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABA
 
 ## Checks
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these on every pull request and every push to `master`. Run the ones for the part you changed before you push.
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these on every pull request and every push to `master`, except the last two, which run on pull requests only. Run the ones for the part you changed before you push.
 
 | From | Command | Checks |
 |---|---|---|
@@ -36,10 +36,13 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these on every 
 | `client/` | `npm run build` | the production build |
 | `api/` | `python -c "import main"` | the app imports, with every router |
 | `api/` | `python -m pytest -q` | the tests |
+| repository root | `python -m pytest -q scripts/tests` | the migration linter's tests |
+| repository root | `python scripts/lint_migrations.py` | the migrations the change adds only add (see "Schema changes") |
 
 - CI runs the client checks with placeholder values for `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `import main` with placeholder API settings. Neither talks to Supabase or Gemini, so placeholders work locally too.
 - `npm run lint` must not report a warning that `master` does not already report (#33 tracks the existing ones).
 - The tests need no settings and no network: they set placeholders themselves and replace the Supabase and Gemini clients with in-memory fakes. Run them from `api/`, because the routers load the dataset from a path relative to the working directory. [`api/README.md`](api/README.md#running-the-tests) describes the fixtures.
+- The migration linter checks what `HEAD` adds under `supabase/migrations/` since a base commit: `origin/master` when it is given none, so fetch first. CI passes `HEAD^1`, the tip of `master` that the pull request is merged onto. It needs only Python and git; its tests need `pytest` from `api/requirements-dev.txt`.
 
 ## Backend conventions (`api/`)
 
@@ -77,7 +80,7 @@ The schema is recorded in [`api/schema.md`](api/schema.md): the base tables, the
 - A new table enables row-level security (`ALTER TABLE public.<name> ENABLE ROW LEVEL SECURITY;`). Every table in production has it on, which `api/schema.md` does not show yet.
 - Code that reads a newer table or column catches a failed read and degrades (to `null` or an empty list) instead of answering 500, so the API still works against a database the change has not reached yet.
 - In the pull request, add the SQL at the end of `api/schema.md` under a `-- Migration: ...` header, update `docs/DATABASE.md`, and say that the change needs the SQL applied. Applying it to the production database is a separate step from merging.
-- Issue #16 moves this to migration files under `supabase/migrations/`; this section changes with it.
+- Issue #16 moves this to migration files under `supabase/migrations/`; this section changes with it. Files added there are checked by `scripts/lint_migrations.py`, which passes only changes that add; until #16 adds the baseline migration, no other migration passes.
 
 ## Branches, commits and pull requests
 
