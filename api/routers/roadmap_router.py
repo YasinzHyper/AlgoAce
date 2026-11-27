@@ -87,6 +87,8 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
 
         print(roadmap_json)
         return roadmap_json
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating roadmap: {str(e)}")
     
