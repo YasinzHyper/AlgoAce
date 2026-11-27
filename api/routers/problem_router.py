@@ -322,6 +322,8 @@ async def get_all_problems(roadmap_id: int, user=Depends(get_current_user)):
         tasks_response = supabase.table("tasks").select("*").eq("roadmap_id", roadmap_id).execute()
         return {"tasks": tasks_response.data if tasks_response.data else []}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching tasks: {str(e)}")
 
@@ -355,6 +357,8 @@ async def get_week_problems(roadmap_id: int, week: int, user=Depends(get_current
 
         return {"task": task_response.data[0]}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching task: {str(e)}")
 
@@ -384,6 +388,8 @@ async def delete_all_problems(roadmap_id: int, user=Depends(get_current_user)):
         supabase.table("tasks").delete().eq("roadmap_id", roadmap_id).execute()
         return {"message": "All tasks deleted successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting tasks: {str(e)}")
 
@@ -417,6 +423,8 @@ async def delete_week_problems(roadmap_id: int, week: int, user=Depends(get_curr
 
         return {"message": f"Tasks for week {week} deleted successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting task: {str(e)}")
 
@@ -467,6 +475,8 @@ async def update_week_problems(
 
         return {"task": update_response.data[0]}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating task: {str(e)}")
 

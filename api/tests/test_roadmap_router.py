@@ -40,3 +40,18 @@ def test_list_roadmaps_requires_an_authorization_header(client):
     response = client.get("/api/roadmap/")
 
     assert response.status_code == 422
+
+
+def test_generate_reports_the_tools_error_without_wrapping_it(client, supabase_fake, gemini_fake, auth_header):
+    # The roadmap tool turns a failed model call into {"error": ...}, which the
+    # handler raises as an HTTPException of its own.
+    gemini_fake.models.responses = [RuntimeError("model unavailable")]
+    body = {"goal": "Get ready for interviews", "weekly_hours": 5, "weeks": 2}
+
+    response = client.post("/api/roadmap/generate", json=body, headers=auth_header(USER_A))
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Failed to generate roadmap: model unavailable"}
+    assert len(gemini_fake.models.calls) == 1
+    assert supabase_fake.rows("roadmaps") == []
+    assert supabase_fake.rows("tasks") == []

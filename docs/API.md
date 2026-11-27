@@ -106,4 +106,5 @@ The interactive Swagger UI at `/docs` is generated from the FastAPI app and is a
 
 - `401` — missing/invalid `Authorization` header or token rejected by Supabase.
 - `404` — row not found **or** not owned by the caller (ownership and existence are not distinguished).
+  Exception: `GET /api/progress/task/{task_id}` and `PUT /api/progress/task/{task_id}/complete` answer `403` for a task in another user's roadmap, and the latter `400` for a problem or topic the task does not contain or an unknown `type`.
 - `500` — wrapped exception; `detail` contains the message. Gemini failures surface here.

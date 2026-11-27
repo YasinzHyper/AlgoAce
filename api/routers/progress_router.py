@@ -202,6 +202,8 @@ async def get_progress_by_task(task_id: int, user=Depends(get_current_user)):
         if not progress_response.data:
             raise HTTPException(status_code=404, detail="Progress not found for this task")
         return progress_response.data[0]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching progress: {str(e)}")
 
@@ -217,6 +219,8 @@ async def get_progress_by_roadmap(roadmap_id: int, user=Depends(get_current_user
 
         progress_response = supabase.table("progress").select("*").eq("roadmap_id", roadmap_id).eq("user_id", user.user.id).execute()
         return {"progress_entries": progress_response.data if progress_response.data else []}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching progress: {str(e)}")
 
@@ -277,6 +281,8 @@ async def complete_item(task_id: int, item: CompleteItem, user=Depends(get_curre
         )
 
         return {"message": "Progress updated successfully", "progress": update_response.data[0]}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating progress: {str(e)}")
 
