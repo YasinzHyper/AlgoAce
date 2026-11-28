@@ -65,7 +65,7 @@ const { data, loading, error, refresh, ...actions } = useThing(args)
 | Prefix | Module | Responsibility |
 |---|---|---|
 | `/api/user` | `user_router.py` | Read/update the `public.users` profile row (goal, deadline, weekly_hours, current_knowledge). |
-| `/api/roadmap` | `roadmap_router.py` | CRUD roadmaps. `POST /generate` runs `RoadmapTool` (Gemini) → inserts `roadmaps` row → calls `services.problem_service.generate_and_save_recommendations()` to populate `tasks` + bootstrap `progress` rows. |
+| `/api/roadmap` | `roadmap_router.py` | CRUD roadmaps. `POST /generate` runs `RoadmapTool` (Gemini) → chooses problems with `services.problem_service.generate_recommendations()` → inserts `roadmaps` row → `save_recommendations()` populates `tasks` + bootstraps `progress` rows, and `discard_roadmap()` deletes the new roadmap again if that fails. |
 | `/api/problems` | `problem_router.py` | Per-roadmap/per-week task CRUD, re-recommend, and the AI explanation endpoint (hydrates the problem from the CSV, asks Gemini for an approach walkthrough). |
 | `/api/progress` | `progress_router.py` | Mark problems/topics complete (mirrors into `problem_completions`/`topic_completions` and refreshes streaks). Week-level and roadmap-level **AI feedback** generation. |
 | `/api/analytics` | `analytics_router.py` | `/summary` (heatmap, streak, topic mastery, difficulty mix), `/dashboard` (headline cards), `/roadmaps` + `/roadmap/{id}` (pace-vs-plan, strong/weak topics, last cached feedback). Home of `_compute_roadmap_progress()`, reused by the feedback + interview routers. |

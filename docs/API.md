@@ -21,7 +21,7 @@ The interactive Swagger UI at `/docs` is generated from the FastAPI app and is a
 |---|---|
 | `GET /api/roadmap/` | List all roadmaps owned by the caller. |
 | `GET /api/roadmap/{id}` | Fetch one roadmap (404 if not owned). |
-| `POST /api/roadmap/generate` | Body: `UserInput` `{goal, deadline?, weekly_hours?, current_knowledge?, weeks?}`. Runs `RoadmapTool` (Gemini) → inserts `roadmaps` row → runs `ProblemRecommendationTool` to create one `tasks` row per week and bootstrap matching `progress` rows. Returns the saved roadmap. |
+| `POST /api/roadmap/generate` | Body: `UserInput` `{goal, deadline?, weekly_hours?, current_knowledge?, weeks?}`. Runs `RoadmapTool` (Gemini) → runs `ProblemRecommendationTool` to choose each week's problems → inserts the `roadmaps` row, one `tasks` row per week and matching `progress` rows. Nothing is saved when choosing the problems fails or no week gets one; when saving the tasks or progress rows fails, the new roadmap and its rows are deleted again. Returns the saved roadmap. |
 | `DELETE /api/roadmap/{id}` | Delete a roadmap (cascades to tasks/progress). |
 
 ---

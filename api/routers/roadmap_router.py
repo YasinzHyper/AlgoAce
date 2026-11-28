@@ -4,7 +4,7 @@ from supabase_client import supabase
 from models.schema import UserInput
 from agents.crew import DSACrew
 from agents.specialized import RoadmapTool
-from services.problem_service import generate_and_save_recommendations
+from services.problem_service import discard_roadmap, generate_recommendations, save_recommendations
 import json
 
 router = APIRouter()
@@ -71,19 +71,30 @@ async def generate_roadmap(user_input: UserInput, user=Depends(get_current_user)
         }
         if "company" in roadmap_json:
             roadmap_data["company"] = roadmap_json["company"]
+
+        # Choose the problems before saving anything, so that a roadmap is
+        # never left without tasks.
+        try:
+            problems_per_week = generate_recommendations(
+                roadmap_data=roadmap_json["roadmap_data"],
+                company=roadmap_json.get("company"),
+                user_input=user_input.model_dump()
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
+        if not problems_per_week:
+            raise HTTPException(status_code=500, detail="Error generating recommendations: no problems match the roadmap's topics")
+
         response = supabase.table("roadmaps").insert(roadmap_data).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to save roadmap")
         
         roadmap_id = response.data[0]['id']
-        # Automate problem recommendation
-        generate_and_save_recommendations(
-            roadmap_id=roadmap_id,
-            roadmap_data=roadmap_json["roadmap_data"],
-            company=roadmap_json.get("company"),
-            user_input=user_input.model_dump(),
-            user_id=user.user.id
-        )
+        try:
+            save_recommendations(roadmap_id, problems_per_week, user.user.id)
+        except Exception as e:
+            discard_roadmap(roadmap_id, user.user.id)
+            raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
 
         print(roadmap_json)
         return roadmap_json
